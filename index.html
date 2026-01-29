@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlyReferral | Dashboard</title>
+    <!-- Tailwind CSS Play CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'aviation-dark': '#020617',
+                        'aviation-purple': '#9333ea',
+                        'aviation-blue': '#3b82f6',
+                        'tier-bronze': '#A8715A',
+                        'tier-silver': '#C0C0C0',
+                        'tier-gold': '#FFD700',
+                        'tier-platinum': '#E5E4E2',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Supabase Client CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="styles/main.css">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+
+<body class="bg-aviation-dark text-slate-200 min-h-screen">
+    <!-- Navigation -->
+    <nav class="sticky top-0 z-50 glass border-b border-white/5 px-6 py-4 flex justify-between items-center">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-aviation-purple rounded-lg flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z">
+                    </path>
+                </svg>
+            </div>
+            <span class="text-xl font-bold tracking-tight text-white">Fly<span
+                    class="text-aviation-purple">Referral</span></span>
+        </div>
+        <div class="flex items-center gap-4">
+            <span id="user-tier-badge"
+                class="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden">NIVEL
+                BRONCE</span>
+            <button onclick="openProfileModal()"
+                class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-aviation-purple hover:text-white transition-all group"
+                title="Mi Perfil">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                </svg>
+            </button>
+            <button id="logout-btn" class="text-xs font-bold text-slate-500 hover:text-white transition-colors">Cerrar
+                Sesión</button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-6 py-8">
+        <!-- Hero Section -->
+        <header class="mb-12">
+            <h1 class="text-4xl font-bold text-white mb-2">Bienvenido, <span id="user-name">Referidor</span></h1>
+            <p class="text-slate-400">Estás ganando el <span class="text-aviation-purple font-semibold">10%</span> de
+                comisión en cada cierre.</p>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+            <div class="glass p-6 rounded-2xl">
+                <p class="text-slate-500 text-sm mb-1">Total Ganado</p>
+                <h3 class="text-2xl font-bold text-white">$0.00</h3>
+            </div>
+            <div class="glass p-6 rounded-2xl">
+                <p class="text-slate-500 text-sm mb-1">Referidos Activos</p>
+                <h3 class="text-2xl font-bold text-white">0</h3>
+            </div>
+            <div class="glass p-6 rounded-2xl">
+                <p class="text-slate-500 text-sm mb-1">Tasa de Conversión</p>
+                <h3 class="text-2xl font-bold text-white">0%</h3>
+            </div>
+            <div class="glass p-6 rounded-2xl border-aviation-purple/20">
+                <p class="text-aviation-purple text-sm mb-1">Próximo Objetivo</p>
+                <h3 class="text-lg font-semibold text-white">Nivel Silver (12%)</h3>
+                <div class="w-full bg-white/5 h-1 rounded-full mt-2">
+                    <div class="bg-aviation-purple h-full rounded-full w-1/4"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-semibold text-white">Mis Referidos</h2>
+            <div class="flex gap-4">
+                <button
+                    class="px-4 py-2 glass hover:bg-white/5 text-sm font-semibold rounded-xl flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                    </svg>
+                    Carga Masiva
+                </button>
+                <button id="new-prospect-btn"
+                    class="px-4 py-2 bg-aviation-purple hover:bg-aviation-purple/80 text-white text-sm font-bold rounded-xl shadow-[0_0_20px_rgba(147,51,234,0.2)]">
+                    + Nuevo Prospecto
+                </button>
+            </div>
+        </div>
+
+        <!-- Prospect Modal -->
+        <div id="prospect-modal"
+            class="hidden fixed inset-0 z-[100] bg-aviation-dark/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="glass w-full max-w-lg rounded-3xl p-8 border border-white/10 shadow-2xl">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-white">Nuevo Prospecto</h2>
+                    <button id="close-modal" class="text-slate-400 hover:text-white">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <form onsubmit="registerProspect(event)" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-slate-500 mb-1 uppercase tracking-wider">Nombre</label>
+                            <input type="text" name="nombre" required
+                                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-aviation-purple">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-500 mb-1 uppercase tracking-wider">Apellidos</label>
+                            <input type="text" name="apellidos" required
+                                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-aviation-purple">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1 uppercase tracking-wider">Empresa</label>
+                        <input type="text" name="empresa" required
+                            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-aviation-purple">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1 uppercase tracking-wider">Correo
+                            Electrónico</label>
+                        <input type="email" name="email" required
+                            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-aviation-purple">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1 uppercase tracking-wider">Teléfono</label>
+                        <input type="tel" name="telefono" required
+                            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-aviation-purple">
+                    </div>
+                    <button type="submit"
+                        class="w-full py-3 bg-aviation-purple text-white font-bold rounded-xl mt-4 shadow-[0_0_20px_rgba(147,51,234,0.3)]">
+                        Registrar y Enviar
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="glass rounded-2xl overflow-hidden mb-12">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-white/5 text-slate-400 font-semibold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-4">Prospecto</th>
+                        <th class="px-6 py-4">Empresa</th>
+                        <th class="px-6 py-4">Estatus</th>
+                        <th class="px-6 py-4 text-right">Comisión Proyectada</th>
+                    </tr>
+                </thead>
+                <tbody id="leads-table-body" class="divide-y divide-white/5">
+                    <tr>
+                        <td colspan="4" class="px-6 py-12 text-center text-slate-500">Aún no has registrado ningún
+                            referido.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Knowledge & Support Hub -->
+        <section class="mt-16 grid grid-cols-1 lg:grid-cols-3 gap-12">
+
+            <!-- 8.1 FAQ & 8.3 Tips -->
+            <div class="lg:col-span-2 space-y-12">
+                <div>
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-white">Centro de Conocimiento</h2>
+                        <div class="relative">
+                            <input type="text" id="faq-search" onkeyup="searchFAQ()" placeholder="Buscar ayuda..."
+                                class="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-aviation-purple text-slate-300 w-64 pl-10">
+                            <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Tabs for FAQ/Tips -->
+                    <div class="flex gap-4 mb-8">
+                        <button onclick="switchKnowledgeTab('faqs')" id="ktab-faqs"
+                            class="px-6 py-2 rounded-xl text-sm font-bold bg-aviation-purple text-white shadow-lg shadow-aviation-purple/20">Preguntas
+                            Frecuentes</button>
+                        <button onclick="switchKnowledgeTab('tips')" id="ktab-tips"
+                            class="px-6 py-2 rounded-xl text-sm font-bold bg-white/5 text-slate-400 hover:bg-white/10 transition-all">Tips
+                            de Venta</button>
+                    </div>
+
+                    <div id="knowledge-content" class="space-y-4">
+                        <!-- FAQ/Tips items inyectados por JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 8.2 Ticketing / Consultas -->
+            <div class="space-y-8">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-xl font-semibold text-white">Consultas Internas</h2>
+                    <button onclick="openTicketModal()" class="text-xs text-aviation-purple font-bold hover:underline">+
+                        Nueva Consulta</button>
+                </div>
+
+                <div id="tickets-list" class="space-y-4">
+                    <!-- Tickets inyectados por JS -->
+                </div>
+
+                <!-- Assigned Exec (Moved/Refined) -->
+                <div class="pt-8 border-t border-white/5">
+                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Tu Ejecutivo Asignado
+                    </h3>
+                    <div id="support-exec-info">
+                        <p class="text-slate-500 text-xs italic">Cargando...</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Ticket Modal -->
+    <div id="ticket-modal"
+        class="hidden fixed inset-0 z-[100] bg-aviation-dark/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass w-full max-w-lg rounded-3xl p-8 border border-white/10 shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-white">Nueva Consulta</h2>
+                <button onclick="closeTicketModal()" class="text-slate-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <form onsubmit="createNewTicket(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs text-slate-500 mb-1 uppercase tracking-wider">Asunto</label>
+                    <input type="text" name="subject" required
+                        class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-aviation-purple">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-500 mb-1 uppercase tracking-wider">Vincular a Prospecto
+                        (Opcional)</label>
+                    <select id="ticket-lead-ref" name="leadId"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-aviation-purple text-slate-300">
+                        <option value="">Ninguno</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-500 mb-1 uppercase tracking-wider">Mensaje</label>
+                    <textarea name="message" required rows="4"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-aviation-purple"></textarea>
+                </div>
+                <button type="submit"
+                    class="w-full py-3 bg-aviation-purple text-white font-bold rounded-xl mt-4 shadow-lg shadow-aviation-purple/20">Enviar
+                    Consulta</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div id="profile-modal"
+        class="hidden fixed inset-0 z-[100] bg-aviation-dark/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass w-full max-w-lg rounded-3xl p-8 border border-white/10 shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-white">Mi Perfil</h2>
+                <button onclick="closeProfileModal()" class="text-slate-400 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <form onsubmit="saveProfile(event)" class="space-y-6">
+                <div class="space-y-4">
+                    <h3
+                        class="text-xs font-bold text-aviation-purple uppercase tracking-widest border-b border-white/5 pb-2">
+                        Información Personal</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[10px] text-slate-500 mb-1 uppercase tracking-wider">Correo
+                                Electrónico</label>
+                            <input type="email" id="profile-email" name="email" readonly
+                                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-slate-400 outline-none">
+                        </div>
+                        <div>
+                            <label
+                                class="block text-[10px] text-slate-500 mb-1 uppercase tracking-wider">Teléfono</label>
+                            <input type="tel" id="profile-phone" name="phone" placeholder="+52..."
+                                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:border-aviation-purple outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <h3
+                        class="text-xs font-bold text-aviation-purple uppercase tracking-widest border-b border-white/5 pb-2">
+                        Datos Bancarios (Depósitos de Comisión)</h3>
+                    <div>
+                        <label class="block text-[10px] text-slate-500 mb-1 uppercase tracking-wider">Titular de la
+                            Cuenta (Nombre Completo)</label>
+                        <input type="text" id="profile-bank-holder" name="bankHolder" placeholder="Juan Pérez..."
+                            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:border-aviation-purple outline-none">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[10px] text-slate-500 mb-1 uppercase tracking-wider">Banco</label>
+                            <input type="text" id="profile-bank" name="bank" placeholder="Ej. BBVA..."
+                                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:border-aviation-purple outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-500 mb-1 uppercase tracking-wider">Cuenta CLABE
+                                (18
+                                dígitos)</label>
+                            <input type="text" id="profile-clabe" name="clabe" maxlength="18" placeholder="0123..."
+                                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:border-aviation-purple outline-none tracking-widest">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-4 pt-4">
+                    <button type="button" onclick="closeProfileModal()"
+                        class="flex-1 py-3 glass border-white/10 text-slate-400 font-bold rounded-xl hover:bg-white/5">Cancelar</button>
+                    <button type="submit"
+                        class="flex-1 py-3 bg-aviation-purple text-white font-bold rounded-xl shadow-lg shadow-aviation-purple/20 hover:brightness-110 transition-all">Guardar
+                        Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- App Logic -->
+    <script src="js/app.js"></script>
+</body>
+
+</html>
