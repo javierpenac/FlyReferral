@@ -403,23 +403,49 @@ async function registerProspect(event) {
     }
 }
 
-function handleCSV(event) {
+async function handleCSV(event) {
     const file = event.target.files[0];
     if (file) {
         console.log('Procesando CSV:', file.name);
-        alert(`Simulación: Se han cargado 5 nuevos prospectos desde ${file.name}`);
+        const reader = new FileReader();
 
-        for (let i = 1; i <= 5; i++) {
-            state.leads.push({
-                id: Date.now() + i,
-                referrerId: state.currentUser.id,
-                name: `Prospecto Extra ${i}`,
-                empresa: 'Corporativo Destino',
-                status: 'Pendiente',
-                comision: '$0.00'
-            });
-        }
-        renderReferrerDashboard();
+        reader.onload = async (e) => {
+            const content = e.target.result;
+            const lines = content.split('\n').filter(line => line.trim() !== '');
+            const newLeads = [];
+
+            // Formato esperado: Nombre, Empresa
+            for (const line of lines) {
+                const parts = line.split(',').map(p => p.trim());
+                if (parts.length >= 2) {
+                    newLeads.push({
+                        referrer_id: state.currentUser.id,
+                        name: parts[0],
+                        company: parts[1],
+                        status: 'Pendiente',
+                        commission: 0
+                    });
+                }
+            }
+
+            if (newLeads.length > 0) {
+                try {
+                    const { error } = await supabaseClient.from('leads').insert(newLeads);
+                    if (error) throw error;
+
+                    alert(`Éxito: Se han cargado ${newLeads.length} nuevos prospectos.`);
+                    await loadInitialData();
+                    renderReferrerDashboard();
+                } catch (err) {
+                    console.error('Error en carga masiva:', err);
+                    alert('Error al guardar los datos en el servidor.');
+                }
+            } else {
+                alert('No se encontraron datos válidos en el CSV (Formato: Nombre, Empresa).');
+            }
+        };
+
+        reader.readAsText(file);
     }
 }
 
@@ -552,6 +578,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.location.pathname.includes('index.html') || window.location.pathname === '/' || window.location.pathname.endsWith('Antigravity/')) {
         renderKnowledge();
         renderTickets();
+
+        // Listener para Carga Masiva
+        const bulkBtn = document.getElementById('bulk-upload-btn');
+        const bulkInput = document.getElementById('bulk-upload-input');
+        if (bulkBtn && bulkInput) {
+            bulkBtn.onclick = () => bulkInput.click();
+        }
     }
 });
 
