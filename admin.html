@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FlyReferral | Admin Panel</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -74,16 +75,35 @@
                 </svg>
                 <span class="font-semibold text-sm">Traspaso de Cartera</span>
             </button>
-            <button onclick="switchTab('settings')"
+            <button onclick="switchTab('cms')"
                 class="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 transition-all group"
-                id="tab-settings">
+                id="tab-cms">
                 <svg class="w-5 h-5 group-hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
-                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
                     </path>
-                    <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                 </svg>
-                <span class="font-semibold text-sm">Configuración</span>
+                <span class="font-semibold text-sm">Gestión de Contenido</span>
+            </button>
+            <button onclick="switchTab('referral_fees')"
+                class="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 transition-all group"
+                id="tab-referral_fees">
+                <svg class="w-5 h-5 group-hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                    </path>
+                </svg>
+                <span class="font-semibold text-sm">Comisiones</span>
+            </button>
+            <button onclick="switchTab('transactions')"
+                class="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 transition-all group"
+                id="tab-transactions">
+                <svg class="w-5 h-5 group-hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                    </path>
+                </svg>
+                <span class="font-semibold text-sm">Transacciones</span>
             </button>
         </nav>
 
@@ -162,14 +182,50 @@
                 <table class="w-full text-left text-sm">
                     <thead class="bg-white/[0.01] text-slate-500 font-bold uppercase text-[10px] tracking-widest">
                         <tr>
-                            <th class="px-8 py-6">Usuario / Email</th>
-                            <th class="px-8 py-6">Rol de Acceso</th>
-                            <th class="px-8 py-6">Ejecutivo Asignado</th>
+                            <th class="px-8 py-6 text-left">Usuario</th>
+                            <th class="px-8 py-6 text-left">Rol</th>
+                            <th class="px-8 py-6 text-left">Asignación</th>
                             <th class="px-8 py-6 text-right">Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="admin-users-body" class="divide-y divide-white/5">
                         <!-- Inyectado por JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Section: Transactions (Admin Flight Management) -->
+        <div id="section-transactions" class="hidden space-y-12">
+            <header>
+                <h1 class="text-4xl font-bold text-white tracking-tight">Gestión de Transacciones</h1>
+                <p class="text-slate-400 mt-2">Visibilidad total y control sobre todos los vuelos registrados en la
+                    plataforma.</p>
+            </header>
+
+            <div class="glass rounded-[32px] overflow-hidden">
+                <div class="p-8 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
+                    <h2 class="text-lg font-bold text-white">Historial Global de Vuelos</h2>
+                    <div class="flex gap-4">
+                        <input type="text" id="transaction-search" placeholder="Buscar por cliente o región..."
+                            onkeyup="renderAdminTransactions()"
+                            class="bg-aviation-dark border border-white/10 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-red-500 text-slate-300 w-64">
+                    </div>
+                </div>
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-white/[0.01] text-slate-500 font-bold uppercase text-[10px] tracking-widest">
+                        <tr>
+                            <th class="px-8 py-6">Fecha</th>
+                            <th class="px-8 py-6">Cliente (Lead)</th>
+                            <th class="px-8 py-6">Referidor</th>
+                            <th class="px-8 py-6">Ejecutivo</th>
+                            <th class="px-8 py-6 text-right">Monto</th>
+                            <th class="px-8 py-6 text-center">Estatus Pago</th>
+                            <th class="px-8 py-6 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-transactions-body" class="divide-y divide-white/5">
+                        <!-- Injected by JS -->
                     </tbody>
                 </table>
             </div>
@@ -259,46 +315,77 @@
             </div>
         </div>
 
-        <!-- Section: Settings -->
-        <div id="section-settings" class="hidden">
-            <div class="max-w-3xl space-y-12">
-                <header>
-                    <h1 class="text-4xl font-bold text-white tracking-tight">Configuración del Sistema</h1>
-                    <p class="text-slate-400 mt-2">Ajustes globales de la plataforma, tasas de comisionamiento base y
-                        niveles.</p>
-                </header>
+        <!-- Section: CMS Management -->
+        <div id="section-cms" class="hidden space-y-12">
+            <header>
+                <h1 class="text-4xl font-bold text-white tracking-tight">Gestión de Contenido</h1>
+                <p class="text-slate-400 mt-2">Administra las Preguntas Frecuentes y Tips de Ventas visibles para los
+                    socios.</p>
+            </header>
 
-                <div class="space-y-8">
-                    <div class="glass p-10 rounded-[40px] border border-white/5">
-                        <h3 class="text-xl font-bold text-white mb-8">Niveles de Socio (Tiers)</h3>
-                        <div class="space-y-6">
-                            <div class="flex items-center justify-between p-4 bg-white/5 rounded-2xl">
-                                <div class="flex items-center gap-4">
-                                    <div class="w-3 h-3 rounded-full bg-tier-bronze"></div>
-                                    <span class="font-bold text-white">Nivel Bronce</span>
-                                </div>
-                                <div class="flex items-center gap-4">
-                                    <input type="number" value="10"
-                                        class="w-16 bg-aviation-dark border border-white/10 rounded-lg px-2 py-1 text-center text-sm font-bold text-aviation-purple">
-                                    <span class="text-slate-500 text-xs font-bold">%</span>
-                                </div>
-                            </div>
-                            <div class="flex items-center justify-between p-4 bg-white/5 rounded-2xl">
-                                <div class="flex items-center gap-4">
-                                    <div class="w-3 h-3 rounded-full bg-tier-silver"></div>
-                                    <span class="font-bold text-white">Nivel Silver</span>
-                                </div>
-                                <div class="flex items-center gap-4">
-                                    <input type="number" value="12"
-                                        class="w-16 bg-aviation-dark border border-white/10 rounded-lg px-2 py-1 text-center text-sm font-bold text-aviation-purple">
-                                    <span class="text-slate-500 text-xs font-bold">%</span>
-                                </div>
-                            </div>
-                            <!-- More Tiers... -->
-                        </div>
-                        <button class="mt-8 text-xs font-bold text-red-500 hover:underline">Restablecer valores de
-                            fábrica</button>
-                    </div>
+            <div class="glass p-8 rounded-[32px] border border-white/5">
+                <div class="flex gap-4 mb-8">
+                    <button onclick="initAdminCMS('faq')" id="btn-cms-faq"
+                        class="px-6 py-2 rounded-xl text-sm font-bold bg-white/10 text-white border border-white/10">FAQs</button>
+                    <button onclick="initAdminCMS('tips')" id="btn-cms-tips"
+                        class="px-6 py-2 rounded-xl text-sm font-bold text-slate-500 hover:text-white border border-transparent">Sales
+                        Tips</button>
+                </div>
+
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-white" id="cms-section-title">Preguntas Frecuentes (FAQ)</h2>
+                    <button onclick="addNewCMSItem()"
+                        class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-xl transition-all shadow-lg flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Añadir Nuevo
+                    </button>
+                </div>
+
+                <div id="cms-items-container" class="space-y-4 grid grid-cols-1 gap-4">
+                    <!-- Items injected by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Section: Referral Fees Settings -->
+        <div id="section-referral_fees" class="hidden space-y-12">
+            <header class="flex justify-between items-end">
+                <div>
+                    <h1 class="text-4xl font-bold text-white tracking-tight">Tasas de Comisión</h1>
+                    <p class="text-slate-400 mt-2">Define los montos fijos pagados por región y nivel.</p>
+                </div>
+                <!-- <button onclick="saveCommissionSettings()" class="px-6 py-3 bg-aviation-purple hover:bg-aviation-purple-light text-white font-bold rounded-xl shadow-lg transition-all flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                    Guardar Cambios
+                </button> --> <!-- Button moved inside table container for context -->
+            </header>
+
+            <div class="glass p-8 rounded-[32px] border border-white/5">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-white/5 text-slate-400 font-semibold uppercase tracking-wider">
+                            <tr>
+                                <th class="px-6 py-4 rounded-tl-2xl">Región</th>
+                                <th class="px-6 py-4 text-center text-aviation-purple">Platinum</th>
+                                <th class="px-6 py-4 text-center text-white">Black</th>
+                                <th class="px-6 py-4 rounded-tr-2xl text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="commission-settings-body" class="divide-y divide-white/5">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-8 flex justify-end">
+                    <button onclick="saveCommissionSettings()"
+                        class="px-8 py-4 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl shadow-lg transition-all flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Guardar Todas las Tarifas
+                    </button>
                 </div>
             </div>
         </div>
@@ -352,6 +439,7 @@
                     </div>
                 </div>
 
+
                 <!-- Executive Selector (Only for Referrers) -->
                 <div id="exec-selector-container" class="space-y-3">
                     <label class="block text-[10px] uppercase font-bold text-slate-500 tracking-widest">Ejecutivo
@@ -374,26 +462,96 @@
         </div>
     </div>
 
+    <!-- Edit Flight Modal -->
+    <div id="edit-flight-modal"
+        class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-[#1a1f2e] border border-white/10 rounded-3xl p-8 max-w-lg w-full shadow-2xl">
+            <h3 class="text-2xl font-bold text-white mb-2">Editar Transacción</h3>
+            <p class="text-slate-400 text-sm mb-6">Corrige los datos del vuelo. Esta acción recalculará las comisiones.
+            </p>
+
+            <form onsubmit="updateFlight(event)" class="space-y-4">
+                <input type="hidden" id="edit-flight-id">
+
+                <div>
+                    <label class="block text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-2">Fecha de
+                        Vuelo</label>
+                    <input type="date" id="edit-flight-date" required
+                        class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-aviation-purple text-white">
+                </div>
+
+                <div>
+                    <label class="block text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-2">Región /
+                        Destino</label>
+                    <input type="text" id="edit-flight-region" required placeholder="Ej. Europa, Asia..."
+                        class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-aviation-purple text-white">
+                </div>
+
+                <div>
+                    <label class="block text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-2">Monto
+                        Comisión ($)</label>
+                    <input type="number" id="edit-flight-amount" required step="0.01"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-aviation-purple text-white font-mono">
+                </div>
+
+                <div>
+                    <label class="block text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-2">Estatus de
+                        Pago</label>
+                    <select id="edit-flight-status"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-aviation-purple text-white">
+                        <option value="pending">Pendiente</option>
+                        <option value="paid">Pagado</option>
+                    </select>
+                </div>
+
+                <div class="flex gap-3 mt-8">
+                    <button type="button" onclick="closeEditFlightModal()"
+                        class="flex-1 py-3 rounded-xl border border-white/10 text-slate-400 font-bold hover:bg-white/5 transition-all">Cancelar</button>
+                    <button type="submit"
+                        class="flex-1 py-3 rounded-xl bg-aviation-purple text-white font-bold hover:bg-aviation-purple/80 transition-all shadow-lg shadow-aviation-purple/20">Guardar
+                        Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="js/app.js"></script>
     <script>
         /**
          * Lógica de Pestañas (Admin)
          */
         function switchTab(tab) {
-            document.getElementById('section-users').classList.add('hidden');
-            document.getElementById('section-portfolios').classList.add('hidden');
-            document.getElementById('section-settings').classList.add('hidden');
+            // 1. Ocultar todas las secciones
+            const sections = ['section-users', 'section-portfolios', 'section-cms', 'section-referral_fees', 'section-transactions'];
+            sections.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
+            });
 
-            document.getElementById('tab-users').classList.remove('sidebar-active', 'text-white');
-            document.getElementById('tab-users').classList.add('text-slate-400');
-            document.getElementById('tab-portfolios').classList.remove('sidebar-active', 'text-white');
-            document.getElementById('tab-portfolios').classList.add('text-slate-400');
-            document.getElementById('tab-settings').classList.remove('sidebar-active', 'text-white');
-            document.getElementById('tab-settings').classList.add('text-slate-400');
+            // 2. Desactivar todos los tabs
+            const tabs = ['tab-users', 'tab-portfolios', 'tab-cms', 'tab-referral_fees', 'tab-transactions'];
+            tabs.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.classList.remove('sidebar-active', 'text-white');
+                    el.classList.add('text-slate-400');
+                }
+            });
 
-            document.getElementById('section-' + tab).classList.remove('hidden');
-            document.getElementById('tab-' + tab).classList.add('sidebar-active', 'text-white');
-            document.getElementById('tab-' + tab).classList.remove('text-slate-400');
+            // 3. Mostrar sección activa
+            const activeSection = document.getElementById('section-' + tab);
+            if (activeSection) activeSection.classList.remove('hidden');
+
+            // 4. Activar tab visualmente
+            const activeTab = document.getElementById('tab-' + tab);
+            if (activeTab) {
+                activeTab.classList.add('sidebar-active', 'text-white');
+                activeTab.classList.remove('text-slate-400');
+            }
+
+            // 5. Lógica específica de renderizado
+            if (tab === 'users') renderAdmin();
+            if (tab === 'transactions') renderAdminTransactions();
         }
 
         function openUserModal() {
@@ -404,21 +562,7 @@
             document.getElementById('user-modal').classList.add('hidden');
         }
 
-        function executeTransfer() {
-            const from = document.getElementById('transfer-from').value;
-            const to = document.getElementById('transfer-to').value;
-            if (!from || !to) {
-                alert('Debes seleccionar ambos ejecutivos.');
-                return;
-            }
-            alert('Traspaso masivo ejecutado correctamente.');
-        }
 
-        function saveUser(e) {
-            e.preventDefault();
-            alert('Usuario creado y credenciales enviadas por email.');
-            closeUserModal();
-        }
     </script>
 </body>
 

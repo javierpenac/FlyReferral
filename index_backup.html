@@ -461,53 +461,6 @@
     <!-- Hidden File Input for Bulk Upload -->
     <input type="file" id="bulk-upload-input" class="hidden" accept=".csv">
 
-    <!-- Ticket Detail Modal (Chat) -->
-    <div id="ticket-detail-modal"
-        class="hidden fixed inset-0 z-[110] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4">
-        <div
-            class="glass w-full max-w-2xl h-[80vh] rounded-[32px] border border-white/10 shadow-3xl flex flex-col overflow-hidden">
-            <!-- Header -->
-            <div class="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
-                <div>
-                    <h2 id="ticket-detail-subject" class="text-xl font-bold text-white">Asunto del Ticket</h2>
-                    <div class="flex items-center gap-3 mt-1">
-                        <span id="ticket-detail-id"
-                            class="text-[10px] uppercase font-mono text-slate-500">TK-12345</span>
-                        <span id="ticket-detail-status"
-                            class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">Pendiente</span>
-                    </div>
-                </div>
-                <button onclick="closeTicketDetailModal()" class="text-slate-400 hover:text-white transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
-                        </path>
-                    </svg>
-                </button>
-            </div>
-
-            <!-- Messages Area -->
-            <div id="ticket-messages-container" class="flex-1 overflow-y-auto p-8 space-y-6 bg-black/20">
-                <!-- Messages injected by JS -->
-            </div>
-
-            <!-- Input Area -->
-            <div class="p-6 border-t border-white/5 bg-white/[0.02]">
-                <form onsubmit="sendTicketReply(event)" class="relative">
-                    <textarea id="ticket-reply-input" name="message" rows="1"
-                        class="w-full bg-white/5 border border-white/10 rounded-2xl pl-5 pr-14 py-4 text-sm text-white focus:outline-none focus:border-aviation-purple resize-none"
-                        placeholder="Escribe una respuesta..."></textarea>
-                    <button type="submit"
-                        class="absolute right-2 top-2 p-2 bg-aviation-purple text-white rounded-xl shadow-lg shadow-aviation-purple/20 hover:scale-105 transition-transform">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
-                        </svg>
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-
     <!-- App Logic -->
     <script src="js/app.js"></script>
     <script>

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Seed Auth</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+    <h1>Seeding Auth Users...</h1>
+    <pre id="log"></pre>
+
+    <script>
+        const SUPABASE_URL = 'https://vbjuwbwwabctmyyzlzuu.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_c8uJYXuq1clJ_LXS72ZkkA_GfLokXSI';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const users = [
+            { email: 'admin@flyreferral.com', password: 'password123', role: 'admin' },
+            { email: 'alpha@flyreferral.com', password: 'password123', role: 'ejecutivo' },
+            { email: 'beta@flyreferral.com', password: 'password123', role: 'ejecutivo' },
+            { email: 'ref1@test.com', password: 'password123', role: 'referidor' },
+            { email: 'ref2@test.com', password: 'password123', role: 'referidor' },
+            { email: 'ref3@test.com', password: 'password123', role: 'referidor' },
+            { email: 'ref4@test.com', password: 'password123', role: 'referidor' },
+            { email: 'ref5@test.com', password: 'password123', role: 'referidor' },
+            { email: 'ref6@test.com', password: 'password123', role: 'referidor' }
+        ];
+
+        function log(msg) {
+            document.getElementById('log').textContent += msg + '\n';
+            console.log(msg);
+        }
+
+        async function seed() {
+            log('Starting seed...');
+
+            for (const user of users) {
+                // 1. Sign Up
+                const { data, error } = await supabaseClient.auth.signUp({
+                    email: user.email,
+                    password: user.password,
+                    options: {
+                        data: {
+                            full_name: user.email.split('@')[0], // simplified name
+                            role: user.role
+                        }
+                    }
+                });
+
+                if (error) {
+                    log(`Error creating ${user.email}: ${error.message}`);
+                    if (error.message.includes('already registered')) {
+                        log(`User ${user.email} already exists. Skipping.`);
+                    }
+                } else {
+                    log(`Success creating ${user.email} (ID: ${data.user?.id})`);
+                }
+
+                // Sign out to prevent session conflict for next iteration
+                await supabaseClient.auth.signOut();
+
+                // Wait a bit to avoid rate limits
+                await new Promise(r => setTimeout(r, 500));
+            }
+            log('Done!');
+        }
+
+        seed();
+    </script>
+</body>
+
+</html>

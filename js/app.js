@@ -6,27 +6,35 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 /**
  * Estado Global Simulado (Ahora dinámico con Supabase)
  */
-let state = {
+// State management
+const state = {
+    users: [],
+    leads: [],
+    flights: [],
+    tickets: [],
     currentUser: {
         id: localStorage.getItem('user_id'),
         name: localStorage.getItem('user_name'),
         role: localStorage.getItem('user_role')
     },
-    users: [],
-    leads: [],
     faqs: [],
     tips: [],
-    tickets: [],
-    messages: []
+    messages: [],
+    commissions: [] // New: Dynamic commissions
 };
+
+// Hardcoded rates removed. Now using state.commissions
+// const COMMISSION_RATES = { ... }
 
 // Cargar datos iniciales desde Supabase
 async function loadInitialData() {
     try {
         const { data: faqs } = await supabaseClient.from('faqs').select('*');
         const { data: tips } = await supabaseClient.from('tips').select('*');
+        const { data: commissions } = await supabaseClient.from('commission_settings').select('*'); // Fetch commissions
         if (faqs) state.faqs = faqs;
         if (tips) state.tips = tips;
+        if (commissions) state.commissions = commissions; // Assign commissions
 
         if (state.currentUser.id) {
             const { data: profiles } = await supabaseClient.from('profiles').select('*');
@@ -38,12 +46,12 @@ async function loadInitialData() {
             if (tickets) state.tickets = tickets;
             if (messages) state.messages = messages;
 
-            // Cargar leads según rol
+            // Cargar leads y vuelos según rol
+            const { data: flights } = await supabaseClient.from('flights').select('*');
+            if (flights) state.flights = flights;
+
             if (state.currentUser.role === 'referidor') {
                 const { data: leads } = await supabaseClient.from('leads').select('*').eq('referrer_id', state.currentUser.id);
-                if (leads) state.leads = leads;
-            } else if (state.currentUser.role === 'ejecutivo') {
-                const { data: leads } = await supabaseClient.from('leads').select('*'); // RLS se encarga del filtro
                 if (leads) state.leads = leads;
             } else {
                 const { data: leads } = await supabaseClient.from('leads').select('*');
@@ -91,6 +99,27 @@ function initModals() {
 }
 
 /**
+ * TAB SWITCHER (SIDEBAR)
+ */
+function switchReferrerTab(tab) {
+    const tabs = ['dashboard', 'tickets', 'knowledge'];
+    tabs.forEach(t => {
+        const section = document.getElementById(`section-${t}`);
+        const nav = document.getElementById(`nav-${t}`);
+
+        if (!section || !nav) return;
+
+        if (t === tab) {
+            section.classList.remove('hidden');
+            nav.className = 'w-full flex items-center gap-4 px-4 py-3 rounded-xl bg-aviation-purple text-white font-bold text-sm shadow-lg shadow-aviation-purple/20 transition-all';
+        } else {
+            section.classList.add('hidden');
+            nav.className = 'w-full flex items-center gap-4 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white font-bold text-sm transition-all';
+        }
+    });
+}
+
+/**
  * DASHBOARD REFERIDOR
  * Solo ve sus propios leads y quién es su ejecutivo asignado.
  */
@@ -98,19 +127,54 @@ function renderReferrerDashboard() {
     const referrer = state.users.find(u => u.id === state.currentUser.id);
     if (!referrer) return;
 
-    // Mostrar Ejecutivo Asignado
+    // Calcular comisiones y vuelos
+    const myLeads = state.leads.filter(l => l.referrer_id === state.currentUser.id);
+    const myLeadIds = myLeads.map(l => l.id);
+    const myFlights = state.flights.filter(f => myLeadIds.includes(f.lead_id));
+    const totalCommission = myFlights.reduce((sum, f) => sum + Number(f.amount), 0);
+
+    // Actualizar Stats
+    const commEl = document.getElementById('stat-total-commission');
+    const leadsEl = document.getElementById('stat-active-leads');
+    const flightsEl = document.getElementById('stat-total-flights');
+
+    if (commEl) commEl.textContent = `$${totalCommission.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+    if (leadsEl) leadsEl.textContent = myLeads.length;
+    if (flightsEl) flightsEl.textContent = myFlights.length;
+
+    // Actualizar Sidebar & Headers
+    const tierName = (referrer.tier || 'Platinum').toUpperCase();
+
+    // Sidebar Elements
+    const sidebarName = document.getElementById('user-name-sidebar');
+    const sidebarTier = document.getElementById('user-tier-sidebar');
+    const sidebarInitial = document.getElementById('user-initial');
+
+    // Hero Elements
+    const heroName = document.getElementById('user-name');
+    const heroTierCard = document.getElementById('stat-current-tier'); // In stats grid
+
+    if (sidebarName) sidebarName.textContent = referrer.name;
+    if (sidebarTier) sidebarTier.textContent = tierName;
+    if (sidebarInitial) sidebarInitial.textContent = referrer.name ? referrer.name[0] : 'U';
+
+    if (heroName) heroName.textContent = referrer.name.split(' ')[0]; // First name only
+    if (heroTierCard) heroTierCard.textContent = tierName;
+
+
+    // Mostrar Ejecutivo Asignado (Sidebar)
     const exec = state.users.find(u => u.id === referrer.assigned_exec_id);
-    const supportInfo = document.getElementById('support-exec-info');
-    if (supportInfo && exec) {
-        supportInfo.innerHTML = `
-            <div class="flex items-center gap-3 p-4 glass rounded-2xl border border-aviation-purple/20">
-                <div class="w-10 h-10 rounded-full bg-aviation-purple/10 flex items-center justify-center text-aviation-purple font-bold border border-aviation-purple/30">
+    const sidebarExecInfo = document.getElementById('sidebar-exec-info');
+
+    if (sidebarExecInfo && exec) {
+        sidebarExecInfo.innerHTML = `
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-[10px] font-bold text-slate-400 border border-white/5">
                     ${exec.name ? exec.name[0] : '?'}
                 </div>
                 <div>
-                    <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Ejecutivo Asignado</p>
-                    <p class="text-xs font-bold text-white">${exec.name}</p>
-                    <p class="text-[10px] text-aviation-purple">${exec.email || ''}</p>
+                    <p class="font-bold text-white text-xs">${exec.name}</p>
+                    <p class="text-[9px] text-aviation-purple font-mono cursor-pointer hover:underline" onclick="switchReferrerTab('tickets')">Contactar</p>
                 </div>
             </div>
         `;
@@ -119,23 +183,36 @@ function renderReferrerDashboard() {
     // Filtrar Leads Propios
     const leadsBody = document.getElementById('leads-table-body');
     if (leadsBody) {
-        if (state.leads.length === 0) {
+        if (myLeads.length === 0) {
             leadsBody.innerHTML = '<tr><td colspan="4" class="px-6 py-12 text-center text-slate-500">Aún no has registrado ningún referido.</td></tr>';
         } else {
-            leadsBody.innerHTML = state.leads.map(lead => `
+            leadsBody.innerHTML = myLeads.map(lead => {
+                const leadFlights = state.flights.filter(f => f.lead_id === lead.id);
+                const leadComm = leadFlights.reduce((sum, f) => sum + Number(f.amount), 0);
+                return `
                 <tr class="hover:bg-white/5 transition-colors border-b border-white/5">
                     <td class="px-6 py-4 font-semibold text-white">${lead.name}</td>
                     <td class="px-6 py-4 text-slate-400">${lead.company || ''}</td>
                     <td class="px-6 py-4">
-                        <span class="px-2 py-1 rounded-full text-[10px] font-bold uppercase ${lead.status === 'Cerrado' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}">
+                        <span class="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${lead.status === 'Cerrado' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}">
                             ${lead.status}
                         </span>
                     </td>
-                    <td class="px-6 py-4 font-mono text-aviation-purple text-right">$${lead.commission || '0.00'}</td>
+                    <td class="px-6 py-4 font-mono text-aviation-purple text-right">$${leadComm.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                    <td class="px-6 py-4 text-center">
+                        <button onclick="openVuelosModal('${lead.id}')" class="px-3 py-1 bg-aviation-purple/10 text-aviation-purple text-[10px] font-bold rounded-lg border border-aviation-purple/20 hover:bg-aviation-purple hover:text-white transition-all">
+                            Ver Vuelos
+                        </button>
+                    </td>
                 </tr>
-            `).join('');
+            `;
+            }).join('');
         }
     }
+
+    // Render Support Tickets
+    renderTickets();
+    renderKnowledge();
 }
 
 /**
@@ -149,14 +226,51 @@ function renderExecutive() {
     const myReferrers = state.users.filter(u => u.role === 'referidor' && u.assigned_exec_id === execId);
     const myReferrerIds = myReferrers.map(r => r.id);
 
-    // 2. Filtrar Leads de esos Referidores
-    const myLeads = state.leads.filter(l => myReferrerIds.includes(l.referrer_id));
+    // 2. Filtrar Leads de esos Referidores (y ordenar por ID para estabilidad visual)
+    const myLeads = state.leads
+        .filter(l => myReferrerIds.includes(l.referrer_id))
+        .sort((a, b) => a.id - b.id);
+
+    // 3. Calcular Utilidad Proyectada (Comisiones acumuladas de sus referidos)
+    const myFlights = state.flights.filter(f => myLeads.map(l => l.id).includes(Number(f.lead_id)));
+    const totalUtility = myFlights.reduce((sum, f) => sum + Number(f.amount), 0);
+    const utilityEl = document.getElementById('stat-total-utility');
+    if (utilityEl) utilityEl.textContent = `$${totalUtility.toLocaleString('en-US', { minimumFractionDigits: 0 })}`;
+
+    // 4. Calcular Métricas Generales (Corrección)
+    const totalLeads = myLeads.length;
+    const totalClosed = myLeads.filter(l => l.status === 'Cerrado').length;
+
+    // Cierres del mes (Basado en fecha de vuelo)
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const monthlyClosings = myFlights.filter(f => {
+        const d = new Date(f.flight_date || f.created_at);
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    }).length;
+
+    // Conversión
+    const conversion = totalLeads > 0 ? ((totalClosed / totalLeads) * 100).toFixed(1) : 0;
+
+    // Renderizar Métricas
+    const totalLeadsEl = document.getElementById('stat-total-leads');
+    const monthlyClosingsEl = document.getElementById('stat-monthly-closings');
+    const conversionEl = document.getElementById('stat-conversion');
+    const conversionBar = document.getElementById('stat-conversion-bar');
+
+    if (totalLeadsEl) totalLeadsEl.textContent = totalLeads;
+    if (monthlyClosingsEl) monthlyClosingsEl.textContent = monthlyClosings;
+    if (conversionEl) conversionEl.textContent = `${conversion}%`;
+    if (conversionBar) conversionBar.style.width = `${conversion}%`;
 
     // Renderizar Leads
     const leadsBody = document.getElementById('executive-leads-body');
     if (leadsBody) {
         leadsBody.innerHTML = myLeads.map(lead => {
             const ref = myReferrers.find(r => r.id === lead.referrer_id);
+            const leadFlights = state.flights.filter(f => Number(f.lead_id) === lead.id);
+            const leadComm = leadFlights.reduce((sum, f) => sum + Number(f.amount), 0);
+
             return `
                 <tr class="hover:bg-white/[0.03] transition-colors border-b border-white/5">
                     <td class="px-8 py-6">
@@ -166,7 +280,7 @@ function renderExecutive() {
                             </div>
                             <div>
                                 <p class="font-bold text-white text-xs">${ref ? ref.name : 'Desconocido'}</p>
-                                <span class="text-[9px] text-slate-500 uppercase font-bold tracking-tighter">Nivel ${ref ? ref.tier : 'Bronce'}</span>
+                                <span class="text-[9px] text-aviation-purple uppercase font-bold tracking-tighter">${ref ? ref.tier : 'Platinum'}</span>
                             </div>
                         </div>
                     </td>
@@ -174,11 +288,31 @@ function renderExecutive() {
                         <p class="font-bold text-white text-sm">${lead.name}</p>
                         <p class="text-xs text-slate-500">${lead.company || ''}</p>
                     </td>
-                    <td class="px-8 py-6 text-right font-mono text-white text-sm font-bold">$${lead.commission || '0.00'}</td>
+                    <td class="px-8 py-6">
+                        <select onchange="updateLeadStatus('${lead.id}', this.value)" 
+                                    class="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] font-bold uppercase text-slate-300 focus:outline-none focus:border-aviation-purple cursor-pointer hover:bg-white/10 transition-colors">
+                                    <option value="Pendiente" ${lead.status === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
+                                    <option value="Contactado" ${lead.status === 'Contactado' ? 'selected' : ''}>Contactado</option>
+                                    <option value="En Negociación" ${lead.status === 'En Negociación' ? 'selected' : ''}>En Negociación</option>
+                                    <option value="Cerrado" ${lead.status === 'Cerrado' ? 'selected' : ''}>Cerrado</option>
+                                </select>
+                    </td>
+                    <td class="px-8 py-6 text-right font-mono text-white text-sm font-bold">$${leadComm.toLocaleString()}</td>
+                    <td class="px-8 py-6 text-right">
+                        <div class="flex justify-end gap-2">
+                            <button onclick="openHistoryModal(${lead.id})" class="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-all" title="Ver Historial">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </button>
+                            <button onclick="openFlightModal(${lead.id})" class="px-4 py-2 bg-aviation-purple/10 text-aviation-purple text-[10px] font-bold uppercase rounded-lg border border-aviation-purple/20 hover:bg-aviation-purple hover:text-white transition-all">
+                                Vuelo
+                            </button>
+                        </div>
+                    </td>
                 </tr>
             `;
         }).join('');
     }
+
     // Renderizar Directorio de Socios (Referidores)
     const referrersList = document.getElementById('referrers-list-body');
     if (referrersList) {
@@ -194,13 +328,243 @@ function renderExecutive() {
                     </div>
                 </div>
                 <div class="flex items-center gap-8">
-                    <span class="px-3 py-1 bg-aviation-purple/10 text-aviation-purple border border-aviation-purple/20 rounded-full text-[10px] font-bold uppercase">${ref.tier || 'Bronce'}</span>
+                    <span class="px-3 py-1 bg-aviation-purple/10 text-aviation-purple border border-aviation-purple/20 rounded-full text-[10px] font-bold uppercase">${ref.tier || 'Platinum'}</span>
                     <button class="text-slate-500 hover:text-white transition-colors" onclick="alert('Ver perfil detallado de ${ref.name}')">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
                     </button>
                 </div>
             </div>
         `).join('');
+    }
+
+    // Render Support Tickets (Executive View)
+    renderExecutiveSupport();
+}
+
+async function updateLeadStatus(leadId, newStatus) {
+    // 1. Optimistic Update (Immediate Feedback)
+    const prevStatus = state.leads.find(l => l.id == leadId)?.status;
+    const leadIndex = state.leads.findIndex(l => l.id == leadId);
+
+    if (leadIndex !== -1) {
+        state.leads[leadIndex].status = newStatus;
+        renderExecutive(); // Re-render immediately
+    }
+
+    try {
+        const { error } = await supabaseClient
+            .from('leads')
+            .update({ status: newStatus })
+            .eq('id', leadId);
+
+        if (error) {
+            // Revert if error
+            if (leadIndex !== -1) {
+                state.leads[leadIndex].status = prevStatus;
+                renderExecutive();
+            }
+            throw error;
+        }
+
+        // Confirm persistence
+        await loadInitialData();
+        // renderExecutive(); // Optional, already rendered optimistically, but ensures data sync
+    } catch (error) {
+        console.error('Error updating status:', error);
+        alert('Error actualizando estatus. Se revertirán los cambios. Revisa la consola.');
+        await loadInitialData(); // Revert UI
+        renderExecutive();
+    }
+}
+
+// FUNCIONES DE VUELOS
+function openFlightModal(leadId) {
+    const modal = document.getElementById('flight-modal');
+    if (modal) {
+        document.getElementById('flight-lead-id').value = leadId;
+        document.getElementById('flight-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('flight-region').value = "";
+        document.getElementById('flight-amount').value = "";
+        modal.classList.remove('hidden');
+    }
+}
+
+function closeFlightModal() {
+    const modal = document.getElementById('flight-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+async function registerFlight(event) {
+    event.preventDefault();
+    const leadId = document.getElementById('flight-lead-id').value;
+    const region = document.getElementById('flight-region').value;
+    const date = document.getElementById('flight-date').value;
+    const amountInput = document.getElementById('flight-amount').value;
+
+    if (!date || !region || !amountInput) {
+        alert('Por favor completa todos los campos del vuelo.');
+        return;
+    }
+
+    const amount = parseFloat(amountInput);
+
+    const newFlight = {
+        lead_id: leadId,
+        region: region,
+        amount: amount,
+        flight_date: date
+    };
+
+    try {
+        // 1. Insertar Vuelo en Supabase
+        const { error: flightError } = await supabaseClient.from('flights').insert([newFlight]);
+        if (flightError) throw flightError;
+
+        // 2. Actualizar estatus del Lead a 'Cerrado'
+        const { error: leadError } = await supabaseClient
+            .from('leads')
+            .update({ status: 'Cerrado' })
+            .eq('id', leadId);
+
+        if (leadError) console.warn('Error actualizando estatus del lead, pero el vuelo se registró:', leadError);
+
+        alert(`Éxito: Vuelo registrado en región ${region}. Comisión de $${amount.toLocaleString()} generada.`);
+        closeFlightModal();
+
+        // 3. Recargar datos y refrescar UI
+        await loadInitialData();
+        renderExecutive();
+
+    } catch (error) {
+        console.error('Error registrando vuelo:', error);
+        alert('Error al registrar el vuelo en Supabase: ' + (error.message || error));
+    }
+}
+
+function openHistoryModal(leadId) {
+    const lead = state.leads.find(l => l.id === leadId);
+    if (!lead) return;
+
+    // Filter flights for this lead
+    const flights = state.flights
+        .filter(f => Number(f.lead_id) === leadId)
+        .sort((a, b) => new Date(b.flight_date || b.created_at) - new Date(a.flight_date || a.created_at));
+
+    // Update modal content
+    const subtitle = document.getElementById('history-modal-subtitle');
+    const tbody = document.getElementById('history-modal-body');
+    const modal = document.getElementById('history-modal');
+
+    if (subtitle) subtitle.textContent = `Detalle de transacciones para ${lead.name}`;
+
+    if (tbody) {
+        if (flights.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-slate-500">No hay vuelos registrados aún.</td></tr>';
+        } else {
+            tbody.innerHTML = flights.map(f => {
+                const isPaid = f.payment_status === 'paid';
+                return `
+                <tr class="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
+                    <td class="px-6 py-4 text-white font-mono text-xs">${f.flight_date || f.created_at?.split('T')[0] || '-'}</td>
+                    <td class="px-6 py-4 text-slate-300 font-bold text-xs">${f.region || 'N/A'}</td>
+                    <td class="px-6 py-4 text-right font-mono text-green-400 text-sm">$${Number(f.amount).toLocaleString()}</td>
+                    <td class="px-6 py-4 text-right">
+                        ${isPaid
+                        ? `<span class="text-[10px] uppercase font-bold text-green-400 bg-green-500/10 px-2 py-1 rounded border border-green-500/20">Pagado</span>`
+                        : `<button onclick="markFlightAsPaid(${f.id})" class="px-3 py-1 bg-white/5 hover:bg-white/10 text-slate-300 text-[10px] font-bold uppercase rounded border border-white/10 transition-all hover:text-white hover:border-white/30">Marcar Pagado</button>`
+                    }
+                    </td>
+                </tr>
+            `}).join('');
+        }
+    }
+
+    if (modal) modal.classList.remove('hidden');
+}
+
+async function markFlightAsPaid(flightId) {
+    try {
+        if (!confirm('¿Confirmas que esta comisión ya fue pagada al referidor?')) return;
+
+        const { error } = await supabaseClient
+            .from('flights')
+            .update({ payment_status: 'paid' })
+            .eq('id', flightId);
+
+        if (error) throw error;
+
+        // Refresh data and reopen modal for same lead to show updated status
+        await loadInitialData();
+
+        // Find lead ID from the flight to reopen modal
+        const flight = state.flights.find(f => f.id == flightId);
+        if (flight) {
+            openHistoryModal(flight.lead_id);
+        } else {
+            renderExecutive(); // Generic refresh if flight ref lost
+        }
+
+    } catch (error) {
+        console.error('Error marking paid:', error);
+        alert('Error al actualizar estatus de pago.');
+    }
+}
+
+function openVuelosModal(leadId) {
+    const lead = state.leads.find(l => l.id == leadId);
+    if (!lead) return;
+
+    const modal = document.getElementById('vuelos-modal');
+    const nameEl = document.getElementById('vuelos-modal-lead-name');
+    const body = document.getElementById('vuelos-modal-body');
+
+    if (modal && nameEl && body) {
+        nameEl.textContent = `Detalle de viajes para: ${lead.name}`;
+        const leadFlights = state.flights.filter(f => Number(f.lead_id) == leadId);
+
+        if (leadFlights.length === 0) {
+            body.innerHTML = '<tr><td colspan="3" class="px-6 py-8 text-center text-slate-500 italic">No hay vuelos registrados para este referido.</td></tr>';
+        } else {
+            // Sort by date descending
+            leadFlights.sort((a, b) => new Date(b.flight_date) - new Date(a.flight_date));
+
+            body.innerHTML = leadFlights.map(f => `
+                <tr class="hover:bg-white/[0.02] transition-colors">
+                    <td class="px-6 py-4 text-white font-medium">${f.flight_date ? new Date(f.flight_date).toLocaleDateString('es-ES') : '-'}</td>
+                    <td class="px-6 py-4 text-slate-400 capitalize">${f.region}</td>
+                    <td class="px-6 py-4 text-right text-aviation-purple font-bold">$${Number(f.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                </tr>
+            `).join('');
+        }
+
+        modal.classList.remove('hidden');
+    }
+}
+
+function closeVuelosModal() {
+    const modal = document.getElementById('vuelos-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function calculateCommission() {
+    const leadId = document.getElementById('flight-lead-id').value;
+    const region = document.getElementById('flight-region').value;
+
+    if (!leadId || !region) return;
+
+    const lead = state.leads.find(l => l.id == leadId);
+    if (!lead) return;
+
+    const referrer = state.users.find(u => u.id === lead.referrer_id);
+    // Default to Platinum for old data, but check logic
+    const tier = referrer ? (referrer.tier || 'Platinum') : 'Platinum';
+
+    // Find rate in state.commissions
+    const setting = state.commissions.find(c => c.tier === tier && c.region === region);
+    const suggestedAmount = setting ? setting.amount : 0;
+
+    if (suggestedAmount) {
+        document.getElementById('flight-amount').value = suggestedAmount;
     }
 }
 
@@ -243,12 +607,15 @@ function renderAdmin() {
     }
 
     // Alerta de Huérfanos
-    const orphans = state.users.filter(u => u.role === 'referidor' && !u.assignedExecId);
+    const orphans = state.users.filter(u => u.role === 'referidor' && !u.assigned_exec_id);
     const orphanCountEl = document.getElementById('orphan-alert-count');
     if (orphanCountEl) {
         orphanCountEl.textContent = orphans.length;
         document.getElementById('orphan-alert-box').style.display = orphans.length > 0 ? 'flex' : 'none';
     }
+
+    // Poblar selects de traspaso
+    populatePortfolioSelects();
 }
 
 /**
@@ -271,9 +638,29 @@ function populateExecSelect() {
     }
 }
 
+function populatePortfolioSelects() {
+    const fromSelect = document.getElementById('transfer-from');
+    const toSelect = document.getElementById('transfer-to');
+    const executives = state.users.filter(u => u.role === 'ejecutivo');
+
+    if (fromSelect && toSelect) {
+        const fromOptions = '<option value="">Seleccionar emisor...</option>' +
+            executives.map(e => {
+                const count = state.users.filter(u => u.assigned_exec_id === e.id).length;
+                return `<option value="${e.id}">${e.name} (${count} referidores)</option>`;
+            }).join('');
+
+        const toOptions = '<option value="">Seleccionar receptor...</option>' +
+            executives.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+
+        fromSelect.innerHTML = fromOptions;
+        toSelect.innerHTML = toOptions;
+    }
+}
+
 function filterOrphans() {
     const usersBody = document.getElementById('admin-users-body');
-    const orphans = state.users.filter(u => u.role === 'referidor' && !u.assignedExecId);
+    const orphans = state.users.filter(u => u.role === 'referidor' && !u.assigned_exec_id);
     if (usersBody) {
         usersBody.innerHTML = orphans.map(u => `
             <tr class="bg-red-500/5 hover:bg-red-500/10 transition-colors border-b border-white/5">
@@ -298,33 +685,55 @@ function filterOrphans() {
 }
 
 function openEditAsignationModal(userId) {
-    const user = state.users.find(u => u.id === userId);
-    if (!user) return;
-
-    document.getElementById('user-modal').classList.remove('hidden');
+    const modal = document.getElementById('user-modal');
     const form = document.querySelector('#user-modal form');
-    form.querySelector('[name="name"]').value = user.name || '';
-    form.querySelector('[name="email"]').value = user.email || '';
 
-    const roleRadio = form.querySelector(`input[name="role"][value="${user.role}"]`);
-    if (roleRadio) roleRadio.checked = true;
+    if (modal && form) {
+        const user = state.users.find(u => u.id === userId);
+        if (user) {
+            form.querySelector('[name="name"]').value = user.name || '';
+            form.querySelector('[name="email"]').value = user.email || '';
+            // Password field removed for security
+            const roleRadio = form.querySelector(`input[name="role"][value="${user.role}"]`);
+            if (roleRadio) roleRadio.checked = true;
 
-    toggleExecSelector(user.role);
+            toggleExecSelector(user.role);
 
-    if (user.role === 'referidor') {
-        setTimeout(() => {
-            const select = document.getElementById('assigned-exec-select');
-            if (select) select.value = user.assignedExecId || "";
-        }, 10);
+            if (user.role === 'referidor') {
+                setTimeout(() => {
+                    const select = document.getElementById('assigned-exec-select');
+                    if (select) select.value = user.assigned_exec_id || "";
+                }, 10);
+            }
+        } else {
+            // For new user creation if no userId is provided or user not found
+            form.querySelector('[name="name"]').value = '';
+            form.querySelector('[name="email"]').value = '';
+            // Password defaults to auto-generated or handled via invite in a real app
+            form.querySelector('input[name="role"][value="referidor"]').checked = true;
+            toggleExecSelector('referidor');
+            setTimeout(() => {
+                const select = document.getElementById('assigned-exec-select');
+                if (select) select.value = "";
+            }, 10);
+        }
+        modal.classList.remove('hidden');
     }
 }
 
 async function saveUser(event) {
     event.preventDefault();
     const formData = new FormData(event.target);
-    const role = formData.get('role');
-    const email = formData.get('email');
     const name = formData.get('name');
+    const email = formData.get('email');
+    const role = formData.get('role');
+    const password = formData.get('password'); // Get password from form
+
+    // Si es referidor, asignar ejecutivo
+    let assignedExec = null;
+    if (role === 'referidor') {
+        assignedExec = formData.get('assignedExecId');
+    }
 
     // Nota: En una app real, aquí usaríamos supabase.auth.admin.createUser
     // Para esta demo/MVP, simularemos que el usuario existe en auth y crearemos/actualizaremos el perfil.
@@ -338,7 +747,8 @@ async function saveUser(event) {
         name: name,
         email: email,
         role: role,
-        assigned_exec_id: role === 'referidor' ? formData.get('assignedExecId') : null,
+        password: password, // Include password
+        assigned_exec_id: assignedExec,
         status: 'Activo'
     };
 
@@ -356,7 +766,7 @@ async function saveUser(event) {
     }
 }
 
-function executeTransfer() {
+async function executeTransfer() {
     const fromId = document.getElementById('transfer-from').value;
     const toId = document.getElementById('transfer-to').value;
 
@@ -370,11 +780,21 @@ function executeTransfer() {
         return;
     }
 
-    const affectedReferrers = state.users.filter(u => u.assignedExecId === fromId);
-    affectedReferrers.forEach(r => r.assignedExecId = toId);
+    try {
+        const { error } = await supabaseClient
+            .from('profiles')
+            .update({ assigned_exec_id: toId })
+            .eq('assigned_exec_id', fromId);
 
-    renderAdmin();
-    alert(`Éxito: Se han traspasado ${affectedReferrers.length} referidores al nuevo ejecutivo.`);
+        if (error) throw error;
+
+        alert(`Éxito: Se han traspasado los referidores al nuevo ejecutivo.`);
+        await loadInitialData();
+        renderAdmin();
+    } catch (err) {
+        console.error('Error en traspaso:', err);
+        alert('Error al ejecutar el traspaso en la base de datos.');
+    }
 }
 
 async function registerProspect(event) {
@@ -506,15 +926,17 @@ function renderTickets() {
 
     const myTickets = state.tickets.filter(t => t.referrer_id === state.currentUser.id);
     list.innerHTML = myTickets.map(t => `
-        <div class="glass p-4 rounded-xl border border-white/5 hover:bg-white/[0.02] cursor-pointer transition-all">
-            <div class="flex justify-between items-start mb-1">
-                <h4 class="text-white text-xs font-bold">${t.subject}</h4>
-                <span class="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase ${t.status === 'Abierto' ? 'bg-aviation-purple/10 text-aviation-purple' : 'bg-green-500/10 text-green-400'}">
-                    ${t.status}
-                </span>
-            </div>
-            <p class="text-[10px] text-slate-500">Última actualización: ${new Date(t.last_update).toLocaleDateString()}</p>
-        </div>
+                <div onclick="openTicketDetail('${t.id}')" class="glass p-4 rounded-2xl border border-white/5 cursor-pointer hover:bg-white/5 transition-all group">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="font-bold text-white group-hover:text-aviation-purple transition-colors">${t.subject}</h3>
+                        <span class="px-2 py-1 rounded-full text-[10px] font-bold border ${getStatusColor(t.status)}">${t.status}</span>
+                    </div>
+                    <p class="text-xs text-slate-400 line-clamp-2 mb-3">${t.description || 'Sin descripción'}</p>
+                    <div class="flex justify-between items-center text-[10px] text-slate-500">
+                        <span>${new Date(t.created_at).toLocaleDateString()}</span>
+                        <span class="group-hover:translate-x-1 transition-transform">Ver conversación →</span>
+                    </div>
+                </div>
     `).join('') || '<p class="text-slate-500 text-xs italic text-center py-4">No tienes consultas activas.</p>';
 
     // Update lead selector in modal
@@ -603,7 +1025,7 @@ function renderExecutiveSupport() {
     list.innerHTML = myTickets.map(t => {
         const ref = state.users.find(u => u.id === t.referrer_id);
         return `
-            <div class="p-6 hover:bg-white/[0.02] transition-all flex items-center justify-between group border-b border-white/5 last:border-0">
+            <div class="p-6 hover:bg-white/[0.02] transition-all flex items-center justify-between group border-b border-white/5 last:border-0 cursor-pointer" onclick="openTicketDetail('${t.id}')">
                 <div class="flex items-center gap-4">
                     <div class="w-10 h-10 rounded-full bg-aviation-purple/10 flex items-center justify-center text-aviation-purple font-bold">
                         ${ref ? ref.name[0] : '?'}
@@ -617,10 +1039,10 @@ function renderExecutiveSupport() {
                     <span class="px-2 py-1 rounded-lg text-[9px] font-bold uppercase ${t.status === 'Abierto' ? 'bg-aviation-purple/20 text-aviation-purple' : 'bg-green-500/20 text-green-400'}">
                         ${t.status}
                     </span>
-                    <button class="text-slate-500 hover:text-white transition-colors" onclick="alert('Ver conversación completa (Simulación)')">
+                    <button class="text-slate-500 hover:text-white transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
                     </button>
-                    ${t.status === 'Abierto' ? `<button onclick="closeTicket('${t.id}')" class="text-[9px] font-bold text-green-400 uppercase hover:underline">Cerrar</button>` : ''}
+                    ${t.status === 'Abierto' ? `<button onclick="event.stopPropagation(); closeTicket('${t.id}')" class="text-[9px] font-bold text-green-400 uppercase hover:underline">Cerrar</button>` : ''}
                 </div>
             </div>
         `;
@@ -641,35 +1063,63 @@ async function closeTicket(id) {
     }
 }
 
-// CMS Logic
+// CMS Logic (Admin)
 let activeCMSType = 'faq';
 
-function openExecCMSModal(type) {
+function initAdminCMS(type) {
     activeCMSType = type;
-    document.getElementById('cms-modal').classList.remove('hidden');
-    document.getElementById('cms-modal-title').textContent = type === 'faq' ? 'Gestión de FAQ' : 'Gestión de Sales Enablement';
+
+    // Update Toggle Buttons
+    const btnFaq = document.getElementById('btn-cms-faq');
+    const btnTips = document.getElementById('btn-cms-tips');
+    const title = document.getElementById('cms-section-title');
+
+    if (type === 'faq') {
+        btnFaq.className = 'px-6 py-2 rounded-xl text-sm font-bold bg-white/10 text-white border border-white/10 shadow-lg';
+        btnTips.className = 'px-6 py-2 rounded-xl text-sm font-bold text-slate-500 hover:text-white border border-transparent transition-all';
+        title.textContent = 'Preguntas Frecuentes (FAQ)';
+    } else {
+        btnTips.className = 'px-6 py-2 rounded-xl text-sm font-bold bg-white/10 text-white border border-white/10 shadow-lg';
+        btnFaq.className = 'px-6 py-2 rounded-xl text-sm font-bold text-slate-500 hover:text-white border border-transparent transition-all';
+        title.textContent = 'Tips de Ventas (Sales Enablement)';
+    }
+
     renderCMSItems();
 }
 
-function closeCMSModal() {
-    document.getElementById('cms-modal').classList.add('hidden');
-}
-
 function renderCMSItems() {
-    const list = document.getElementById('cms-items-list');
+    const container = document.getElementById('cms-items-container');
+    if (!container) return; // Guard clause if element doesn't exist (e.g. on executive page)
+
     const items = activeCMSType === 'faq' ? state.faqs : state.tips;
 
-    list.innerHTML = items.map(item => `
-        <div class="glass p-4 rounded-2xl border border-white/5 space-y-3">
-            <input type="text" value="${activeCMSType === 'faq' ? item.question : item.title}" onchange="updateCMSValue('${item.id}', 'title', this.value)" 
-                class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white font-bold text-sm focus:border-aviation-purple outline-none">
-            <textarea onchange="updateCMSValue('${item.id}', 'content', this.value)" 
-                class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-slate-400 text-xs focus:border-aviation-purple outline-none" rows="2">${activeCMSType === 'faq' ? item.answer : item.content}</textarea>
-            <div class="flex justify-end">
-                <button onclick="deleteCMSItem('${item.id}')" class="text-[9px] text-red-500 font-bold uppercase hover:underline">Eliminar</button>
+    container.innerHTML = items.map(item => `
+        <div class="glass p-6 rounded-2xl border border-white/5 space-y-4 hover:bg-white/[0.02] transition-colors">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                <div class="md:col-span-4">
+                    <label class="block text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-2">
+                        ${activeCMSType === 'faq' ? 'Pregunta' : 'Título'}
+                    </label>
+                    <input type="text" value="${activeCMSType === 'faq' ? item.question : item.title}" 
+                        onchange="updateCMSValue('${item.id}', 'title', this.value)" 
+                        class="w-full bg-aviation-dark border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-red-500 outline-none transition-all">
+                </div>
+                <div class="md:col-span-7">
+                    <label class="block text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-2">
+                        ${activeCMSType === 'faq' ? 'Respuesta' : 'Contenido'}
+                    </label>
+                    <textarea onchange="updateCMSValue('${item.id}', 'content', this.value)" 
+                        class="w-full bg-aviation-dark border border-white/10 rounded-xl px-4 py-3 text-slate-400 text-sm focus:border-red-500 outline-none w-full h-full transition-all" rows="2">${activeCMSType === 'faq' ? item.answer : item.content}</textarea>
+                </div>
+                <div class="md:col-span-1 flex items-center justify-center">
+                    <button onclick="deleteCMSItem('${item.id}')" 
+                        class="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </div>
             </div>
         </div>
-    `).join('');
+    `).join('') || '<p class="text-slate-500 text-center py-10 italic">No hay contenido registrado en esta categoría.</p>';
 }
 
 async function updateCMSValue(id, field, value) {
@@ -690,6 +1140,77 @@ async function updateCMSValue(id, field, value) {
         await loadInitialData();
     } catch (error) {
         console.error('Error actualizando CMS:', error);
+    }
+}
+
+// Commission Settings Logic
+function renderCommissionSettings() {
+    const tbody = document.getElementById('commission-settings-body');
+    if (!tbody) return;
+
+    // Get unique regions
+    const regions = [...new Set(state.commissions.map(c => c.region))];
+
+    tbody.innerHTML = regions.map(region => {
+        const plat = state.commissions.find(c => c.region === region && c.tier === 'Platinum');
+        const black = state.commissions.find(c => c.region === region && c.tier === 'Black');
+
+        const platVal = plat ? plat.amount : 0;
+        const blackVal = black ? black.amount : 0;
+        const platId = plat ? plat.id : null;
+        const blackId = black ? black.id : null;
+
+        return `
+            <tr class="hover:bg-white/[0.02] border-b border-white/5 data-row">
+                <td class="px-6 py-4 font-bold text-white">${region}</td>
+                <td class="px-6 py-4 text-center">
+                    <input type="number" 
+                        data-id="${platId}" 
+                        data-region="${region}" 
+                        data-tier="Platinum"
+                        value="${platVal}" 
+                        class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-center text-aviation-purple font-bold w-32 focus:border-aviation-purple outline-none">
+                </td>
+                <td class="px-6 py-4 text-center">
+                   <input type="number" 
+                        data-id="${blackId}" 
+                        data-region="${region}" 
+                        data-tier="Black"
+                        value="${blackVal}" 
+                        class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-center text-white font-bold w-32 focus:border-white/50 outline-none">
+                </td>
+                <td class="px-6 py-4 text-right">
+                    <span class="text-[10px] text-slate-500 italic">Edita y guarda</span>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function saveCommissionSettings() {
+    const inputs = document.querySelectorAll('#commission-settings-body input');
+    const updates = [];
+
+    inputs.forEach(input => {
+        const id = input.dataset.id;
+        const val = parseFloat(input.value);
+        if (id && id !== "null") {
+            updates.push({ id: id, amount: val });
+        }
+    });
+
+    try {
+        // En una app real haríamos batch update o Promise.all
+        // Supabase JS upsert sopporta array
+        const { error } = await supabaseClient.from('commission_settings').upsert(updates);
+        if (error) throw error;
+
+        alert('Comisiones actualizadas correctamente.');
+        await loadInitialData();
+        renderCommissionSettings();
+    } catch (error) {
+        console.error('Error guardando comisiones:', error);
+        alert('Error al guardar configuración.');
     }
 }
 
@@ -779,6 +1300,306 @@ async function saveProfile(event) {
 // Update DOM listener for Executive
 document.addEventListener('DOMContentLoaded', () => {
     if (window.location.pathname.includes('ejecutivo.html')) {
+
         renderExecutiveSupport();
+    }
+});
+
+// --- MESSAGING SYSTEM (TICKET CHAT) ---
+
+// Global variables for messaging
+let activeTicketId = null;
+
+function openTicketDetail(ticketId) {
+    const ticket = state.tickets.find(t => t.id === ticketId);
+    if (!ticket) return;
+
+    activeTicketId = ticketId;
+    const modal = document.getElementById('ticket-detail-modal');
+
+    // Set Header Info
+    document.getElementById('ticket-detail-subject').textContent = ticket.subject;
+    document.getElementById('ticket-detail-id').textContent = ticket.id;
+
+    // Status Badge
+    const statusEl = document.getElementById('ticket-detail-status');
+    statusEl.textContent = ticket.status;
+    statusEl.className = `px-2 py-0.5 rounded-full text-[10px] font-bold border ${getStatusColor(ticket.status)}`;
+
+    // Render Messages
+    renderTicketMessages();
+
+    // Show Modal
+    modal.classList.remove('hidden');
+
+    // Scroll to bottom
+    setTimeout(() => {
+        const container = document.getElementById('ticket-messages-container');
+        if (container) container.scrollTop = container.scrollHeight;
+    }, 100);
+}
+
+function closeTicketDetailModal() {
+    document.getElementById('ticket-detail-modal').classList.add('hidden');
+    activeTicketId = null;
+}
+
+function renderTicketMessages() {
+    const container = document.getElementById('ticket-messages-container');
+    if (!container || !activeTicketId) return;
+
+    // Filter messages for this ticket
+    const ticketMessages = (state.messages || [])
+        .filter(m => m.ticket_id === activeTicketId)
+        .sort((a, b) => new Date(a.created_at || a.timestamp) - new Date(b.created_at || b.timestamp)); // Sort by Date Ascending
+
+    if (ticketMessages.length === 0) {
+        container.innerHTML = '<p class="text-center text-slate-500 text-xs italic mt-10">No hay mensajes en esta conversación aún.</p>';
+        return;
+    }
+
+    const currentUserId = state.currentUser.id;
+
+    container.innerHTML = ticketMessages.map(msg => {
+        const isMe = msg.sender_id === currentUserId;
+        const time = new Date(msg.created_at || msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        return `
+            <div class="flex ${isMe ? 'justify-end' : 'justify-start'} animate-fade-in">
+                <div class="max-w-[80%] ${isMe ? 'bg-aviation-purple text-white rounded-tr-none' : 'bg-white/10 text-slate-200 rounded-tl-none'} p-4 rounded-2xl shadow-md">
+                    <p class="text-sm leading-relaxed">${msg.text}</p>
+                    <div class="flex items-center justify-end gap-1 mt-1 opacity-60">
+                         <span class="text-[10px]">${time}</span>
+                         ${isMe ? '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>' : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function sendTicketReply(event) {
+    event.preventDefault();
+    if (!activeTicketId) return;
+
+    const input = document.getElementById('ticket-reply-input');
+    const text = input.value.trim();
+    if (!text) return;
+
+    input.value = ''; // Clear input immediately (Optimistic UI)
+
+    // Create optimistic message
+    const tempMsg = {
+        id: 'temp-' + Date.now(),
+        ticket_id: activeTicketId,
+        sender_id: state.currentUser.id,
+        text: text,
+        created_at: new Date().toISOString()
+    };
+
+    // Add to local state and render immediately
+    if (!state.messages) state.messages = [];
+    state.messages.push(tempMsg);
+    renderTicketMessages();
+
+    // Scroll to bottom
+    const container = document.getElementById('ticket-messages-container');
+    if (container) container.scrollTop = container.scrollHeight;
+
+    try {
+        const { error } = await supabaseClient
+            .from('messages')
+            .insert([{
+                ticket_id: activeTicketId,
+                sender_id: state.currentUser.id,
+                text: text
+            }]);
+
+        if (error) throw error;
+
+        // Background Refresh to get real ID and timestamp
+        await loadInitialData();
+        renderTicketMessages(); // Re-render with confirmed data
+
+    } catch (error) {
+        console.error('Error sending reply:', error);
+        alert('Error al enviar mensaje. ' + error.message);
+        // Remove optimistic message on error? or show retry? Simple for now:
+        state.messages = state.messages.filter(m => m.id !== tempMsg.id);
+        renderTicketMessages();
+    }
+}
+
+// Helper for status colors
+function getStatusColor(status) {
+    switch (status) {
+        case 'Abierto': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+        case 'En Proceso': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
+        case 'Resuelto': return 'bg-green-500/10 text-green-400 border-green-500/20';
+        case 'Cerrado': return 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+        default: return 'bg-white/10 text-white border-white/20';
+    }
+}
+
+// --- ADMIN TRANSACTIONS LOGIC ---
+
+function renderAdminTransactions() {
+    const tbody = document.getElementById('admin-transactions-body');
+    const searchVal = document.getElementById('transaction-search')?.value.toLowerCase() || '';
+
+    if (!tbody) return;
+
+    // Filter and Join Data
+    let flights = state.flights.map(f => {
+        const lead = state.leads.find(l => l.id == f.lead_id);
+        const ref = lead ? state.users.find(u => u.id === lead.referrer_id) : null;
+        const exec = ref ? state.users.find(u => u.id === ref.assigned_exec_id) : null;
+        return { ...f, lead, ref, exec };
+    });
+
+    if (searchVal) {
+        flights = flights.filter(f =>
+            (f.lead?.name || '').toLowerCase().includes(searchVal) ||
+            (f.region || '').toLowerCase().includes(searchVal)
+        );
+    }
+
+    // Sort by Date Descending
+    flights.sort((a, b) => new Date(b.flight_date || b.created_at) - new Date(a.flight_date || a.created_at));
+
+    if (flights.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-12 text-center text-slate-500">No se encontraron transacciones.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = flights.map(f => {
+        const isPaid = f.payment_status === 'paid';
+        return `
+            <tr class="hover:bg-white/[0.03] transition-colors border-b border-white/5">
+                <td class="px-8 py-6 text-slate-300 font-mono text-xs">${f.flight_date || f.created_at?.split('T')[0]}</td>
+                <td class="px-8 py-6 font-bold text-white">${f.lead?.name || 'Eliminado'}</td>
+                <td class="px-8 py-6 text-slate-400 text-xs">${f.ref?.name || '-'}</td>
+                <td class="px-8 py-6 text-slate-400 text-xs">${f.exec?.name || '-'}</td>
+                <td class="px-8 py-6 text-right font-mono text-green-400 font-bold">$${Number(f.amount).toLocaleString()}</td>
+                <td class="px-8 py-6 text-center">
+                    <span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${isPaid ? 'bg-green-500/10 text-green-400' : 'bg-yellow-500/10 text-yellow-500'}">
+                        ${isPaid ? 'Pagado' : 'Pendiente'}
+                    </span>
+                </td>
+                <td class="px-8 py-6 text-right">
+                    <button onclick="openEditFlightModal(${f.id})" class="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 p-2 rounded-lg transition-all mr-2" title="Editar Vuelo">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                    </button>
+                    <button onclick="deleteFlight(${f.id})" class="text-red-500 hover:text-red-400 hover:bg-red-500/10 p-2 rounded-lg transition-all" title="Eliminar Vuelo">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Global variable for current editing flight
+let currentEditingFlightId = null;
+
+function openEditFlightModal(flightId) {
+    const flight = state.flights.find(f => f.id == flightId);
+    if (!flight) return;
+
+    currentEditingFlightId = flightId;
+
+    // Populate form
+    document.getElementById('edit-flight-id').value = flightId;
+    document.getElementById('edit-flight-date').value = flight.flight_date || flight.created_at?.split('T')[0];
+    document.getElementById('edit-flight-region').value = flight.region;
+    document.getElementById('edit-flight-amount').value = flight.amount;
+    document.getElementById('edit-flight-status').value = flight.payment_status || 'pending';
+
+    document.getElementById('edit-flight-modal').classList.remove('hidden');
+}
+
+function closeEditFlightModal() {
+    document.getElementById('edit-flight-modal').classList.add('hidden');
+    currentEditingFlightId = null;
+}
+
+async function updateFlight(event) {
+    event.preventDefault();
+    if (!currentEditingFlightId) return;
+
+    const date = document.getElementById('edit-flight-date').value;
+    const region = document.getElementById('edit-flight-region').value;
+    const amount = document.getElementById('edit-flight-amount').value;
+    const status = document.getElementById('edit-flight-status').value;
+
+    try {
+        const { error } = await supabaseClient
+            .from('flights')
+            .update({
+                flight_date: date,
+                region: region,
+                amount: amount,
+                payment_status: status
+            })
+            .eq('id', currentEditingFlightId);
+
+        if (error) throw error;
+
+        alert('Vuelo actualizado correctamente.');
+        closeEditFlightModal();
+        await loadInitialData();
+        renderAdminTransactions();
+
+    } catch (error) {
+        console.error('Error updating flight:', error);
+        alert('Error al actualizar vuelo: ' + error.message);
+    }
+}
+
+async function deleteFlight(flightId) {
+    if (!confirm('¿Estás seguro de ELIMINAR este vuelo permanentemente? Esta acción afectará las comisiones calculadas.')) return;
+
+    try {
+        const { error } = await supabaseClient
+            .from('flights')
+            .delete()
+            .eq('id', flightId);
+
+        if (error) throw error;
+
+        alert('Vuelo eliminado correctamente.');
+        await loadInitialData();
+        renderAdminTransactions();
+    } catch (error) {
+        console.error('Error deleting flight:', error);
+        alert('Error al eliminar vuelo: ' + error.message);
+    }
+}
+
+
+// Logout Logic
+async function logout() {
+    try {
+        const { error } = await supabaseClient.auth.signOut();
+        if (error) console.warn('Supabase SignOut Error:', error);
+
+        localStorage.clear();
+        window.location.href = 'login.html';
+    } catch (error) {
+        console.error('Logout error:', error);
+        localStorage.clear();
+        window.location.href = 'login.html';
+    }
+}
+
+// Bind Logout Button
+// Bind Logout Button & other global listeners
+document.addEventListener('DOMContentLoaded', () => {
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            logout();
+        });
     }
 });

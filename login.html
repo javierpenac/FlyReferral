@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FlyReferral | Login</title>
     <!-- Tailwind CSS Play CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -81,7 +82,7 @@
                     <input type="checkbox" class="w-4 h-4 rounded bg-white/5 border-white/10 accent-aviation-purple">
                     <span class="text-slate-500 group-hover:text-slate-300 transition-colors">Recordarme</span>
                 </label>
-                <a href="#"
+                <a href="#" onclick="openResetModal(event)"
                     class="text-aviation-purple hover:text-aviation-purple/80 font-semibold transition-colors">¿Olvidaste
                     tu contraseña?</a>
             </div>
@@ -93,44 +94,144 @@
         </form>
 
         <!-- Footer -->
-        <div class="mt-8 pt-8 border-t border-white/5 text-center">
-            <p class="text-slate-500 text-xs">¿No tienes una invitación? <a href="#"
-                    class="text-white font-semibold hover:underline">Contactar soporte</a></p>
+    </div>
+
+    <!-- Reset Password Modal -->
+    <div id="reset-modal"
+        class="hidden fixed inset-0 z-50 bg-aviation-dark/95 backdrop-blur-sm flex items-center justify-center p-6">
+        <div class="glass w-full max-w-md rounded-3xl p-8 border border-white/10 shadow-2xl relative">
+            <button onclick="closeResetModal()"
+                class="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+
+            <div class="mb-6">
+                <h3 class="text-xl font-bold text-white mb-2">Recuperar Contraseña</h3>
+                <p class="text-slate-400 text-xs">Ingresa tu correo y te enviaremos un enlace para restablecer tu
+                    acceso.</p>
+            </div>
+
+            <form onsubmit="handleResetPassword(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs text-slate-500 mb-1 uppercase tracking-widest font-bold">Correo
+                        Electrónico</label>
+                    <input type="email" id="reset-email" required placeholder="tu@correo.com"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-aviation-purple text-white">
+                </div>
+                <button type="submit"
+                    class="w-full py-3 bg-aviation-purple hover:bg-aviation-purple/90 text-white font-bold rounded-xl transition-all">
+                    Enviar Enlace
+                </button>
+            </form>
         </div>
+    </div>
     </div>
 
     <!-- App Logic -->
     <script src="js/app.js"></script>
     <script>
+        // Supabase Consts (Redundant but safe for login page isolation)
+        const LOGIN_SB_URL = 'https://vbjuwbwwabctmyyzlzuu.supabase.co';
+        const LOGIN_SB_KEY = 'sb_publishable_c8uJYXuq1clJ_LXS72ZkkA_GfLokXSI';
+        const loginClient = supabase.createClient(LOGIN_SB_URL, LOGIN_SB_KEY);
+
         async function handleLogin(event) {
             event.preventDefault();
-            const user = document.getElementById('username').value;
-            const pass = document.getElementById('password').value;
+            const emailInput = document.getElementById('username').value.trim();
+            const passInput = document.getElementById('password').value.trim();
 
-            console.log('Intento de login:', user);
+            console.log('Intento de login:', emailInput);
 
-            // Simulación de ids para el MVP conectado a Supabase
-            if (user === 'admin') {
-                localStorage.setItem('user_id', 'admin-1');
-                localStorage.setItem('user_role', 'admin');
-                localStorage.setItem('user_name', 'Súper Administrador');
-                window.location.href = 'admin.html';
-            } else if (user === 'ejecutivo') {
-                localStorage.setItem('user_id', 'exec-1');
-                localStorage.setItem('user_role', 'ejecutivo');
-                localStorage.setItem('user_name', 'Pedro Ejecutivo');
-                window.location.href = 'ejecutivo.html';
-            } else if (user === 'juan') {
-                localStorage.setItem('user_id', 'ref-1');
-                localStorage.setItem('user_role', 'referidor');
-                localStorage.setItem('user_name', 'Juan Referidor');
-                window.location.href = 'index.html';
-            } else {
-                // Para cualquier otro usuario, manejamos como referidor nuevo/genérico
-                localStorage.setItem('user_id', 'ref-new');
-                localStorage.setItem('user_role', 'referidor');
-                localStorage.setItem('user_name', user);
-                window.location.href = 'index.html';
+            // Validation simple
+            if (!emailInput) return alert('Ingresa un correo');
+
+            // 1. Intentar Login Seguro con Supabase Auth
+            const { data, error } = await loginClient.auth.signInWithPassword({
+                email: emailInput,
+                password: passInput
+            });
+
+            if (data?.user) {
+                // AUTH EXITOSO
+                const user = data.user;
+                console.log('Login Auth Exitoso:', user);
+
+                // Buscar perfil asociado para rol/nombre
+                const { data: profile } = await loginClient
+                    .from('profiles')
+                    .select('*')
+                    .eq('email', emailInput) // Usar email como link, o user.id si estuviera sincronizado (para MVP usamos email)
+                    .single();
+
+                if (profile) {
+                    localStorage.setItem('user_id', profile.id); // Mantener ID de perfil para lógica de app
+                    localStorage.setItem('user_role', profile.role);
+                    localStorage.setItem('user_name', profile.name || profile.email);
+                    localStorage.setItem('session_token', data.session.access_token); // Guardar token
+
+                    // Redirección
+                    if (profile.role === 'admin') window.location.href = 'admin.html';
+                    else if (profile.role === 'ejecutivo') window.location.href = 'ejecutivo.html';
+                    else window.location.href = 'index.html';
+                    return;
+                }
+            }
+
+            // --- FALLBACK LEGACY (Solo si Auth nativo falla, revisamos DB antigua TEMPORALMENTE para no bloquear al usuario mientras migra) ---
+            // En un pase a producción real, esto se eliminaría. Lo mantengo como red de seguridad por el error de rate-limit en seeding.
+            console.warn('Auth nativo falló, intentando legacy...', error);
+
+            const { data: legacyUser, error: legacyError } = await loginClient
+                .from('profiles')
+                .select('*')
+                .eq('email', emailInput)
+                .single();
+
+            if (legacyUser && (legacyUser.password === passInput)) {
+                // Éxito Legacy
+                alert('Aviso: Estás entrando con el sistema antiguo. Por favor contacta al admin para migrar tu cuenta a Auth seguro.');
+                localStorage.setItem('user_id', legacyUser.id);
+                localStorage.setItem('user_role', legacyUser.role);
+                localStorage.setItem('user_name', legacyUser.name || legacyUser.email);
+
+                if (legacyUser.role === 'admin') window.location.href = 'admin.html';
+                else if (legacyUser.role === 'ejecutivo') window.location.href = 'ejecutivo.html';
+                else window.location.href = 'index.html';
+                return;
+            }
+
+            alert('Error de autenticación. Verifica tus credenciales.');
+        }
+
+        function openResetModal(e) {
+            if (e) e.preventDefault();
+            document.getElementById('reset-modal').classList.remove('hidden');
+        }
+
+        function closeResetModal() {
+            document.getElementById('reset-modal').classList.add('hidden');
+        }
+
+        async function handleResetPassword(e) {
+            e.preventDefault();
+            const email = document.getElementById('reset-email').value;
+
+            if (!email) return;
+
+            try {
+                const { error } = await loginClient.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin + '/reset-password.html', // Opcional: página landing de cambio
+                });
+
+                if (error) throw error;
+
+                alert('¡Correo enviado! Revisa tu bandeja de entrada (y spam) para restablecer tu contraseña.');
+                closeResetModal();
+            } catch (error) {
+                console.error('Error reset password:', error);
+                alert('Error al enviar el correo: ' + error.message);
             }
         }
     </script>

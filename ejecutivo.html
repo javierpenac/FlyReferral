@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FlyReferral | Ejecutivo Console</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -135,7 +136,7 @@
                 <div class="glass p-6 rounded-[24px] border border-white/5">
                     <p class="text-slate-500 text-[10px] uppercase font-bold tracking-widest mb-2">Total Prospectos</p>
                     <div class="flex items-end justify-between">
-                        <h3 class="text-3xl font-bold text-white">48</h3>
+                        <h3 id="stat-total-leads" class="text-3xl font-bold text-white">0</h3>
                         <span class="text-green-400 text-xs font-bold flex items-center gap-1">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path d="M5 10l7-7 7 7M5 19l7-7 7 7"></path>
@@ -148,23 +149,23 @@
                 <div class="glass p-6 rounded-[24px] border border-white/5">
                     <p class="text-slate-500 text-[10px] uppercase font-bold tracking-widest mb-2">Cierres del Mes</p>
                     <div class="flex items-end justify-between">
-                        <h3 class="text-3xl font-bold text-white">9</h3>
+                        <h3 id="stat-monthly-closings" class="text-3xl font-bold text-white">0</h3>
                         <span class="text-blue-400 text-xs font-bold">Meta: 15</span>
                     </div>
                 </div>
                 <div class="glass p-6 rounded-[24px] border border-white/5">
                     <p class="text-slate-500 text-[10px] uppercase font-bold tracking-widest mb-2">Conversión</p>
                     <div class="flex items-end justify-between">
-                        <h3 class="text-3xl font-bold text-white">18.7%</h3>
+                        <h3 id="stat-conversion" class="text-3xl font-bold text-white">0%</h3>
                         <div class="w-16 h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                            <div class="bg-aviation-purple h-full w-[18.7%]"></div>
+                            <div id="stat-conversion-bar" class="bg-aviation-purple h-full w-0"></div>
                         </div>
                     </div>
                 </div>
                 <div class="glass p-6 rounded-[24px] border border-aviation-purple/20 bg-aviation-purple/5">
                     <p class="text-aviation-purple text-[10px] uppercase font-bold tracking-widest mb-2">Utilidad
                         Proyectada</p>
-                    <h3 class="text-3xl font-bold text-white">$142,500</h3>
+                    <h3 id="stat-total-utility" class="text-3xl font-bold text-white">$0.00</h3>
                 </div>
             </div>
 
@@ -192,7 +193,8 @@
                                 <th class="px-8 py-6">Referidor</th>
                                 <th class="px-8 py-6">Prospecto / Empresa</th>
                                 <th class="px-8 py-6">Estatus de Gestión</th>
-                                <th class="px-8 py-6 text-right">Comisión Estimada</th>
+                                <th class="px-8 py-6 text-right">Comisión Acumulada</th>
+                                <th class="px-8 py-6 text-right">Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="executive-leads-body" class="divide-y divide-white/5">
@@ -307,60 +309,13 @@
                 </div>
 
                 <!-- Knowledge Management (CMS) -->
-                <div class="space-y-8">
-                    <div class="glass p-8 rounded-[32px]">
-                        <h3 class="text-lg font-bold text-white mb-6">Gestión de Contenido (CMS)</h3>
-                        <div class="space-y-4">
-                            <button onclick="openExecCMSModal('faq')"
-                                class="w-full py-4 glass border-white/10 hover:border-aviation-purple/50 text-white font-bold rounded-2xl flex items-center justify-center gap-3 transition-all">
-                                <svg class="w-5 h-5 text-aviation-purple" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path
-                                        d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
-                                    </path>
-                                </svg>
-                                Editar FAQ dinámico
-                            </button>
-                            <button onclick="openExecCMSModal('tips')"
-                                class="w-full py-4 glass border-white/10 hover:border-aviation-purple/50 text-white font-bold rounded-2xl flex items-center justify-center gap-3 transition-all">
-                                <svg class="w-5 h-5 text-aviation-purple" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path
-                                        d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0012 18.75c-1.03 0-1.9-.4-2.593-1.01l-.547-.548z">
-                                    </path>
-                                </svg>
-                                Actualizar Sales Enablement
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="glass p-8 rounded-[32px] border border-aviation-purple/10">
-                        <h3 class="text-lg font-bold text-white mb-2 italic">Impacto comercial</h3>
-                        <p class="text-sm text-slate-400">Mantener el Centro de Conocimiento actualizado reduce las
-                            consultas repetitivas en un **40%**.</p>
-                    </div>
-                </div>
+                <!-- Removed: CMS management moved to Admin Panel -->
             </div>
         </div>
     </main>
 
     <!-- Modal: CMS Management -->
-    <div id="cms-modal"
-        class="hidden fixed inset-0 z-[100] bg-aviation-dark/90 backdrop-blur-md flex items-center justify-center p-6">
-        <div class="glass w-full max-w-2xl rounded-[40px] p-10 border border-white/10 shadow-3xl">
-            <h2 class="text-2xl font-bold text-white mb-6" id="cms-modal-title">Gestión de FAQ</h2>
-            <div id="cms-items-list" class="max-h-96 overflow-y-auto space-y-4 mb-8 pr-4">
-                <!-- Inyectado por JS -->
-            </div>
-            <div class="flex gap-4">
-                <button onclick="closeCMSModal()"
-                    class="flex-1 py-4 glass text-slate-400 font-bold rounded-2xl hover:bg-white/5 border-white/5 border">Cerrar</button>
-                <button onclick="addNewCMSItem()"
-                    class="flex-1 py-4 bg-aviation-purple text-white font-bold rounded-2xl shadow-lg">+ Añadir
-                    Nuevo</button>
-            </div>
-        </div>
-    </div>
+    <!-- Modal: CMS Management (Removed) -->
 
     <!-- Modal: Tier Update -->
     <div id="tier-modal"
@@ -402,7 +357,144 @@
         </div>
     </div>
 
-    <script src="js/app.js"></script>
+    <!-- Modal: Registrar Vuelo -->
+    <div id="flight-modal"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center z-[100] px-6">
+        <div class="glass w-full max-w-md p-10 rounded-[32px] border border-white/10 shadow-2xl">
+            <h3 class="text-2xl font-bold text-white mb-2">Registrar Nuevo Vuelo</h3>
+            <p class="text-slate-400 text-sm mb-8">Selecciona la región del viaje para calcular la comisión.</p>
+            <form onsubmit="registerFlight(event)" class="space-y-6">
+                <input type="hidden" id="flight-lead-id">
+                <div>
+                    <label class="block text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-3">Fecha del
+                        Vuelo</label>
+                    <input type="date" id="flight-date" required
+                        class="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-aviation-purple transition-all">
+                </div>
+                <div>
+                    <label class="block text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-3">Región del
+                        Vuelo</label>
+                    <select id="flight-region" required onchange="calculateCommission()"
+                        class="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-aviation-purple transition-all">
+                        <option value="">Selecciona una región</option>
+                        <option value="Europa y Asia">Europa y Asia</option>
+                        <option value="Estados Unidos">Estados Unidos</option>
+                        <option value="Sudamerica">Sudamerica</option>
+                        <option value="Centroamérica">Centroamérica</option>
+                        <option value="Nacionales (México)">Nacionales (México)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-3">Monto de
+                        Comisión (MXN) - <span class="text-aviation-purple">Editable</span></label>
+                    <input type="number" id="flight-amount" required
+                        class="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-aviation-purple transition-all font-mono text-lg font-bold text-right"
+                        placeholder="0.00">
+                </div>
+                <div class="flex gap-4 pt-4">
+                    <button type="button" onclick="closeFlightModal()"
+                        class="flex-1 py-4 text-xs font-bold text-slate-400 hover:text-white transition-colors">Cancelar</button>
+                    <button type="submit"
+                        class="flex-1 py-4 bg-aviation-purple hover:bg-aviation-purple-light text-white rounded-2xl text-xs font-bold transition-all shadow-lg shadow-aviation-purple/20">Confirmar
+                        Vuelo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Flight History -->
+    <div id="history-modal"
+        class="hidden fixed inset-0 z-[100] bg-aviation-dark/95 backdrop-blur-xl flex items-center justify-center p-6">
+        <div class="glass w-full max-w-2xl rounded-[48px] p-12 border border-white/10 shadow-3xl">
+            <div class="flex justify-between items-start mb-8">
+                <div>
+                    <h2 class="text-3xl font-bold text-white mb-2">Historial de Transacciones</h2>
+                    <p class="text-slate-500 text-sm" id="history-modal-subtitle">Detalle de vuelos para este prospecto.
+                    </p>
+                </div>
+                <button onclick="document.getElementById('history-modal').classList.add('hidden')"
+                    class="text-slate-500 hover:text-white transition-colors">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="glass rounded-3xl overflow-hidden mb-8">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-white/5 text-slate-400 font-bold uppercase text-[10px] tracking-widest">
+                        <tr>
+                            <th class="px-6 py-4">Fecha</th>
+                            <th class="px-6 py-4">Región</th>
+                            <th class="px-6 py-4 text-right">Comisión</th>
+                            <th class="px-6 py-4 text-right">Estatus</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-modal-body" class="divide-y divide-white/5">
+                        <!-- Injected by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="flex justify-end">
+                <button type="button" onclick="document.getElementById('history-modal').classList.add('hidden')"
+                    class="px-8 py-4 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl border border-white/10 transition-all">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ticket Detail Modal (Chat) -->
+    <div id="ticket-detail-modal"
+        class="hidden fixed inset-0 z-[110] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4">
+        <div
+            class="glass w-full max-w-2xl h-[80vh] rounded-[32px] border border-white/10 shadow-3xl flex flex-col overflow-hidden">
+            <!-- Header -->
+            <div class="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
+                <div>
+                    <h2 id="ticket-detail-subject" class="text-xl font-bold text-white">Asunto del Ticket</h2>
+                    <div class="flex items-center gap-3 mt-1">
+                        <span id="ticket-detail-id"
+                            class="text-[10px] uppercase font-mono text-slate-500">TK-12345</span>
+                        <span id="ticket-detail-status"
+                            class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">Pendiente</span>
+                    </div>
+                </div>
+                <button onclick="closeTicketDetailModal()" class="text-slate-400 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Messages Area -->
+            <div id="ticket-messages-container" class="flex-1 overflow-y-auto p-8 space-y-6 bg-black/20">
+                <!-- Messages injected by JS -->
+            </div>
+
+            <!-- Input Area -->
+            <div class="p-6 border-t border-white/5 bg-white/[0.02]">
+                <form onsubmit="sendTicketReply(event)" class="relative">
+                    <textarea id="ticket-reply-input" name="message" rows="1"
+                        class="w-full bg-white/5 border border-white/10 rounded-2xl pl-5 pr-14 py-4 text-sm text-white focus:outline-none focus:border-aviation-purple resize-none"
+                        placeholder="Escribe una respuesta..."></textarea>
+                    <button type="submit"
+                        class="absolute right-2 top-2 p-2 bg-aviation-purple text-white rounded-xl shadow-lg shadow-aviation-purple/20 hover:scale-105 transition-transform">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                        </svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/app.js?v=manual_3"></script>
     <script>
         /**
          * Lógica de Pestañas (Sections)
