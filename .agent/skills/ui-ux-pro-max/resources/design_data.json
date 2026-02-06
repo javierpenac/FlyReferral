@@ -1,0 +1,76 @@
+{
+    "palettes": [
+        {
+            "name": "Midnight Neon",
+            "colors": [
+                "#020617",
+                "#9333ea",
+                "#3b82f6"
+            ],
+            "industry": "fintech"
+        },
+        {
+            "name": "Organic Wellness",
+            "colors": [
+                "#f8fafc",
+                "#10b981",
+                "#064e3b"
+            ],
+            "industry": "healthcare"
+        },
+        {
+            "name": "Cyberpunk 2077",
+            "colors": [
+                "#fde047",
+                "#f43f5e",
+                "#000000"
+            ],
+            "industry": "gaming"
+        }
+    ],
+    "typography": [
+        {
+            "name": "Luxury Serif",
+            "heading": "Playfair Display",
+            "body": "Inter",
+            "pairing_id": 1
+        },
+        {
+            "name": "Modern Tech",
+            "heading": "Outfit",
+            "body": "Outfit",
+            "pairing_id": 2
+        }
+    ],
+    "styles": [
+        {
+            "name": "Glassmorphism",
+            "features": [
+                "backdrop-blur",
+                "border-white/20",
+                "shadow-xl"
+            ]
+        },
+        {
+            "name": "Bento Grid",
+            "features": [
+                "rounded-3xl",
+                "p-6",
+                "bg-white",
+                "border-neutral-200"
+            ]
+        }
+    ],
+    "ux_guidelines": [
+        {
+            "id": "a11y-01",
+            "rule": "Maintain 4.5:1 contrast ratio",
+            "priority": "CRITICAL"
+        },
+        {
+            "id": "perf-01",
+            "rule": "Lazy load images using WebP",
+            "priority": "HIGH"
+        }
+    ]
+}

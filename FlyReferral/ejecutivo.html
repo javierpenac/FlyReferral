@@ -99,7 +99,18 @@
                         d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z">
                     </path>
                 </svg>
-                <span class="font-semibold text-sm">Soporte y Recursos</span>
+                <span class="font-semibold text-sm">Soporte</span>
+            </button>
+            <button onclick="switchTab('resources')"
+                class="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 transition-all group"
+                id="tab-resources">
+                <svg class="w-5 h-5 group-hover:text-aviation-purple" fill="none" stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
+                    </path>
+                </svg>
+                <span class="font-semibold text-sm">Recursos</span>
             </button>
         </nav>
 
@@ -110,7 +121,7 @@
                         alt="Avatar" class="w-full h-full rounded-full object-cover">
                 </div>
                 <div>
-                    <h4 class="text-xs font-bold text-white">Ejecutivo Premium</h4>
+                    <h4 id="exec-sidebar-name" class="text-xs font-bold text-white">Ejecutivo Premium</h4>
                     <p class="text-[10px] text-slate-500 uppercase tracking-tighter">Gestor de Cuentas</p>
                 </div>
             </div>
@@ -150,7 +161,7 @@
                     <p class="text-slate-500 text-[10px] uppercase font-bold tracking-widest mb-2">Cierres del Mes</p>
                     <div class="flex items-end justify-between">
                         <h3 id="stat-monthly-closings" class="text-3xl font-bold text-white">0</h3>
-                        <span class="text-blue-400 text-xs font-bold">Meta: 15</span>
+
                     </div>
                 </div>
                 <div class="glass p-6 rounded-[24px] border border-white/5">
@@ -174,14 +185,15 @@
                 <div class="flex justify-between items-center">
                     <h2 class="text-2xl font-bold text-white">Bandeja de Entrada</h2>
                     <div class="flex gap-4">
-                        <select
+                        <select id="exec-filter-status" onchange="renderExecutive()"
                             class="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-aviation-purple text-slate-300">
-                            <option>Todos los estatus</option>
-                            <option>Pendiente</option>
-                            <option>En Proceso</option>
-                            <option>Cerrado</option>
+                            <option value="">Todos los estatus</option>
+                            <option value="Pendiente">Pendiente</option>
+                            <option value="En Negociación">En Negociación</option>
+                            <option value="ACTIVO">ACTIVO</option>
                         </select>
-                        <input type="text" placeholder="Buscar por nombre..."
+                        <input type="text" id="exec-filter-search" onkeyup="renderExecutive()"
+                            placeholder="Buscar por nombre..."
                             class="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-aviation-purple text-slate-300 w-64">
                     </div>
                 </div>
@@ -269,29 +281,114 @@
         <div id="section-metrics" class="hidden space-y-12">
             <header>
                 <h1 class="text-4xl font-bold text-white tracking-tight">Métricas de Rendimiento</h1>
-                <p class="text-slate-400 mt-2">Análisis detallado de conversión, tiempos de respuesta y rentabilidad por
-                    socio.</p>
+                <p class="text-slate-400 mt-2">Visión de 360° sobre tu cartera, comisiones y referidores.</p>
             </header>
-            <div class="glass p-12 rounded-[32px] border border-white/5 text-center">
-                <div class="w-20 h-20 bg-aviation-purple/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <svg class="w-10 h-10 text-aviation-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
-                        </path>
-                    </svg>
+
+            <!-- KPI Cards Row -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Total Revenue -->
+                <div
+                    class="glass p-8 rounded-[32px] border border-white/5 relative overflow-hidden group hover:border-aviation-purple/50 transition-all">
+                    <div class="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <svg class="w-24 h-24 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                            </path>
+                        </svg>
+                    </div>
+                    <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4">Comisiones Generadas
+                        (YTD)</p>
+                    <h3 id="metric-total-revenue" class="text-4xl font-bold text-white mb-2">$0.00</h3>
+                    <p class="text-xs text-green-400 font-bold flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                        </svg>
+                        +100% vs año anterior
+                    </p>
                 </div>
-                <h2 class="text-xl font-bold text-white mb-2">Módulo de Analítica Avanzada</h2>
-                <p class="text-slate-400 max-w-md mx-auto italic">"Estamos procesando los datos históricos de vuelos
-                    para generar proyecciones de rentabilidad. Estará disponible en la próxima actualización."</p>
+
+                <!-- Conversion Rate -->
+                <div
+                    class="glass p-8 rounded-[32px] border border-white/5 relative overflow-hidden group hover:border-aviation-purple/50 transition-all">
+                    <div class="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <svg class="w-24 h-24 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                            </path>
+                        </svg>
+                    </div>
+                    <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4">Tasa de Cierre Global</p>
+                    <h3 id="metric-conversion-rate" class="text-4xl font-bold text-white mb-2">0%</h3>
+                    <div class="w-full bg-white/10 h-1.5 rounded-full mt-2 overflow-hidden">
+                        <div id="metric-conversion-bar"
+                            class="bg-aviation-purple h-full w-0 transition-all duration-1000"></div>
+                    </div>
+                </div>
+
+                <!-- Active Referrers -->
+                <div
+                    class="glass p-8 rounded-[32px] border border-white/5 relative overflow-hidden group hover:border-aviation-purple/50 transition-all">
+                    <div class="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <svg class="w-24 h-24 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+                            </path>
+                        </svg>
+                    </div>
+                    <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4">Socios Activos</p>
+                    <h3 id="metric-active-referrers" class="text-4xl font-bold text-white mb-2">0</h3>
+                    <p class="text-xs text-slate-500">De un total de <span id="metric-total-referrers">0</span>
+                        asignados</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Chart Section -->
+                <div class="lg:col-span-2 glass p-8 rounded-[32px] border border-white/5">
+                    <h3 class="text-lg font-bold text-white mb-8">Tendencia de Ingresos (6 Meses)</h3>
+                    <!-- Simple CSS Bar Chart -->
+                    <div id="revenue-chart-container"
+                        class="h-64 flex items-end justify-between gap-2 px-4 border-b border-white/5 pb-4">
+                        <!-- Bars injected by JS -->
+                        <div class="flex-1 h-full flex items-center justify-center text-slate-500 text-xs italic">
+                            Cargando datos...</div>
+                    </div>
+                </div>
+
+                <!-- Top Performers -->
+                <div class="glass p-8 rounded-[32px] border border-white/5">
+                    <h3 class="text-lg font-bold text-white mb-6">Top Referidores</h3>
+                    <div id="top-performers-list" class="space-y-4">
+                        <!-- Injected by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Regional Breakdown -->
+            <div class="glass p-8 rounded-[32px] border border-white/5">
+                <h3 class="text-lg font-bold text-white mb-6">Distribución por Región</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-white/5 text-slate-400 font-bold uppercase text-[10px] tracking-widest">
+                            <tr>
+                                <th class="px-6 py-4 rounded-tl-xl text-left">Región</th>
+                                <th class="px-6 py-4 text-center">Vuelos</th>
+                                <th class="px-6 py-4 text-right rounded-tr-xl">Volumen Generado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="regional-breakdown-body" class="divide-y divide-white/5">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
         <!-- Section: Support Management -->
         <div id="section-support" class="hidden space-y-12">
             <header>
-                <h1 class="text-4xl font-bold text-white tracking-tight">Centro de Soporte y Capacitación</h1>
-                <p class="text-slate-400 mt-2">Gestiona las dudas de tus socios y publica material estratégico para
-                    mejorar cierres.</p>
+                <h1 class="text-4xl font-bold text-white tracking-tight">Centro de Soporte</h1>
+                <p class="text-slate-400 mt-2">Gestiona las dudas de tus socios.</p>
             </header>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -310,6 +407,26 @@
 
                 <!-- Knowledge Management (CMS) -->
                 <!-- Removed: CMS management moved to Admin Panel -->
+            </div>
+        </div>
+
+        <!-- Section: Resources -->
+        <div id="section-resources" class="hidden space-y-12">
+            <header>
+                <h1 class="text-4xl font-bold text-white tracking-tight">Recursos</h1>
+                <p class="text-slate-400 mt-2">Material descargable y guías para socios (Próximamente).</p>
+            </header>
+
+            <div class="glass p-12 rounded-[32px] border border-white/5 text-center">
+                <div class="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
+                        </path>
+                    </svg>
+                </div>
+                <h2 class="text-xl font-bold text-white mb-2">Sección en Construcción</h2>
+                <p class="text-slate-400">Pronto podrás subir y gestionar archivos aquí.</p>
             </div>
         </div>
     </main>
@@ -501,7 +618,7 @@
          */
         function switchTab(tab) {
             // Secciones disponibles
-            const sections = ['leads', 'referrers', 'metrics', 'support'];
+            const sections = ['leads', 'referrers', 'metrics', 'support', 'resources'];
 
             // Ocultar todas
             sections.forEach(s => {
@@ -516,6 +633,10 @@
             const activeTab = document.getElementById('tab-' + tab);
             if (activeSec) activeSec.classList.remove('hidden');
             if (activeTab) activeTab.classList.add('sidebar-active');
+
+            if (tab === 'metrics' && typeof renderExecutiveMetrics === 'function') {
+                renderExecutiveMetrics();
+            }
         }
 
         /**

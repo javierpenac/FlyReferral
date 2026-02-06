@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Repair Panfilo</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+    <h1>Repairing Panfilo...</h1>
+    <pre id="log" style="background:#eee; padding:10px; border-radius:5px;"></pre>
+
+    <script>
+        const SUPABASE_URL = 'https://vbjuwbwwabctmyyzlzuu.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_c8uJYXuq1clJ_LXS72ZkkA_GfLokXSI';
+        const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const log = (msg) => {
+            const el = document.getElementById('log');
+            el.textContent += msg + '\n';
+            console.log(msg);
+        };
+
+        async function run() {
+            log('Starting repair for panfilo@test.com...');
+
+            // 1. SignUp
+            const { data, error } = await client.auth.signUp({
+                email: 'panfilo@test.com',
+                password: '123456',
+                options: {
+                    data: {
+                        name: 'Panfilo',
+                        role: 'referidor'
+                    }
+                }
+            });
+
+            if (error) {
+                log('Error signing up: ' + error.message);
+                return;
+            }
+
+            if (data.user) {
+                log('SUCCESS: User created!');
+                log('New User ID: ' + data.user.id);
+                log('Identity ID: ' + (data.user.identities?.[0]?.id || 'unknown'));
+
+                // Note: We can't update profile here because of restrictions likely, 
+                // but we will capture the ID and do it via SQL.
+            } else {
+                log('User created but no data returned? Check confirmation status.');
+            }
+        }
+
+        run();
+    </script>
+</body>
+
+</html>

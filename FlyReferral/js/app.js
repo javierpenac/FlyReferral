@@ -56,6 +56,10 @@ async function loadInitialData() {
             } else {
                 const { data: leads } = await supabaseClient.from('leads').select('*');
                 if (leads) state.leads = leads;
+
+                // Load Commission Settings (Only needed for Admin/Exec)
+                const { data: commissions } = await supabaseClient.from('commission_settings').select('*');
+                if (commissions) state.commissions = commissions;
             }
         }
     } catch (error) {
@@ -222,6 +226,12 @@ function renderReferrerDashboard() {
 function renderExecutive() {
     const execId = state.currentUser.id;
 
+    // Update Sidebar Name
+    const sidebarNameEl = document.getElementById('exec-sidebar-name');
+    if (sidebarNameEl && state.currentUser.name) {
+        sidebarNameEl.textContent = state.currentUser.name;
+    }
+
     // 1. Filtrar Referidores de este Ejecutivo
     const myReferrers = state.users.filter(u => u.role === 'referidor' && u.assigned_exec_id === execId);
     const myReferrerIds = myReferrers.map(r => r.id);
@@ -239,13 +249,22 @@ function renderExecutive() {
 
     // 4. Calcular Métricas Generales (Corrección)
     const totalLeads = myLeads.length;
-    const totalClosed = myLeads.filter(l => l.status === 'Cerrado').length;
+    const totalClosed = myLeads.filter(l => l.status === 'ACTIVO').length;
 
     // Cierres del mes (Basado en fecha de vuelo)
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
     const monthlyClosings = myFlights.filter(f => {
-        const d = new Date(f.flight_date || f.created_at);
+        let d;
+        if (f.flight_date) {
+            // Treat YYYY-MM-DD as local date to avoid timezone shifts
+            const [y, m, day] = f.flight_date.split('-').map(Number);
+            d = new Date(y, m - 1, day);
+        } else {
+            d = new Date(f.created_at);
+        }
         return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     }).length;
 
@@ -263,15 +282,34 @@ function renderExecutive() {
     if (conversionEl) conversionEl.textContent = `${conversion}%`;
     if (conversionBar) conversionBar.style.width = `${conversion}%`;
 
+    if (conversionBar) conversionBar.style.width = `${conversion}%`;
+
     // Renderizar Leads
     const leadsBody = document.getElementById('executive-leads-body');
-    if (leadsBody) {
-        leadsBody.innerHTML = myLeads.map(lead => {
-            const ref = myReferrers.find(r => r.id === lead.referrer_id);
-            const leadFlights = state.flights.filter(f => Number(f.lead_id) === lead.id);
-            const leadComm = leadFlights.reduce((sum, f) => sum + Number(f.amount), 0);
 
-            return `
+    // Filter Logic
+    const statusFilter = document.getElementById('exec-filter-status')?.value || '';
+    const searchFilter = document.getElementById('exec-filter-search')?.value.toLowerCase() || '';
+
+    const filteredLeads = myLeads.filter(l => {
+        const matchesStatus = statusFilter ? l.status === statusFilter : true;
+        const matchesSearch = searchFilter ? (
+            (l.name && l.name.toLowerCase().includes(searchFilter)) ||
+            (l.company && l.company.toLowerCase().includes(searchFilter))
+        ) : true;
+        return matchesStatus && matchesSearch;
+    });
+
+    if (leadsBody) {
+        if (filteredLeads.length === 0) {
+            leadsBody.innerHTML = '<tr><td colspan="5" class="px-8 py-6 text-center text-slate-500">No se encontraron prospectos con estos filtros.</td></tr>';
+        } else {
+            leadsBody.innerHTML = filteredLeads.map(lead => {
+                const ref = myReferrers.find(r => r.id === lead.referrer_id);
+                const leadFlights = state.flights.filter(f => Number(f.lead_id) === lead.id);
+                const leadComm = leadFlights.reduce((sum, f) => sum + Number(f.amount), 0);
+
+                return `
                 <tr class="hover:bg-white/[0.03] transition-colors border-b border-white/5">
                     <td class="px-8 py-6">
                         <div class="flex items-center gap-3">
@@ -289,12 +327,12 @@ function renderExecutive() {
                         <p class="text-xs text-slate-500">${lead.company || ''}</p>
                     </td>
                     <td class="px-8 py-6">
-                        <select onchange="updateLeadStatus('${lead.id}', this.value)" 
+                            <select onchange="updateLeadStatus('${lead.id}', this.value)" 
                                     class="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] font-bold uppercase text-slate-300 focus:outline-none focus:border-aviation-purple cursor-pointer hover:bg-white/10 transition-colors">
                                     <option value="Pendiente" ${lead.status === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
                                     <option value="Contactado" ${lead.status === 'Contactado' ? 'selected' : ''}>Contactado</option>
                                     <option value="En Negociación" ${lead.status === 'En Negociación' ? 'selected' : ''}>En Negociación</option>
-                                    <option value="Cerrado" ${lead.status === 'Cerrado' ? 'selected' : ''}>Cerrado</option>
+                                    <option value="ACTIVO" ${lead.status === 'ACTIVO' ? 'selected' : ''}>ACTIVO</option>
                                 </select>
                     </td>
                     <td class="px-8 py-6 text-right font-mono text-white text-sm font-bold">$${leadComm.toLocaleString()}</td>
@@ -310,7 +348,8 @@ function renderExecutive() {
                     </td>
                 </tr>
             `;
-        }).join('');
+            }).join('');
+        }
     }
 
     // Renderizar Directorio de Socios (Referidores)
@@ -343,8 +382,9 @@ function renderExecutive() {
 
 async function updateLeadStatus(leadId, newStatus) {
     // 1. Optimistic Update (Immediate Feedback)
-    const prevStatus = state.leads.find(l => l.id == leadId)?.status;
-    const leadIndex = state.leads.findIndex(l => l.id == leadId);
+    const numericId = Number(leadId); // Ensure numeric ID
+    const prevStatus = state.leads.find(l => l.id == numericId)?.status;
+    const leadIndex = state.leads.findIndex(l => l.id == numericId);
 
     if (leadIndex !== -1) {
         state.leads[leadIndex].status = newStatus;
@@ -352,29 +392,187 @@ async function updateLeadStatus(leadId, newStatus) {
     }
 
     try {
-        const { error } = await supabaseClient
+        const { data, error } = await supabaseClient
             .from('leads')
             .update({ status: newStatus })
-            .eq('id', leadId);
+            .eq('id', numericId)
+            .select();
 
-        if (error) {
-            // Revert if error
-            if (leadIndex !== -1) {
-                state.leads[leadIndex].status = prevStatus;
-                renderExecutive();
-            }
-            throw error;
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+            console.warn('Update returned no data. ID mismatch?');
+            // Revert might be needed if no row found
+            throw new Error('No records updated.');
         }
 
         // Confirm persistence
         await loadInitialData();
-        // renderExecutive(); // Optional, already rendered optimistically, but ensures data sync
+        renderExecutive(); // Ensure UI syncs with DB State
     } catch (error) {
         console.error('Error updating status:', error);
-        alert('Error actualizando estatus. Se revertirán los cambios. Revisa la consola.');
+        // alert('Error actualizando estatus. Se revertirán los cambios. Revisa la consola.'); // Less intrusive
+
+        // Revert on error
+        if (leadIndex !== -1 && prevStatus) {
+            state.leads[leadIndex].status = prevStatus;
+        }
         await loadInitialData(); // Revert UI
         renderExecutive();
     }
+}
+
+/**
+ * METRICS DASHBOARD (EXECUTIVE)
+ */
+function renderExecutiveMetrics() {
+    const execId = state.currentUser.id;
+
+    // 1. Get Data Set
+    const myReferrers = state.users.filter(u => u.role === 'referidor' && u.assigned_exec_id === execId);
+    const myReferrerIds = myReferrers.map(r => r.id);
+    const myLeads = state.leads.filter(l => myReferrerIds.includes(l.referrer_id));
+    const myLeadIds = myLeads.map(l => l.id);
+    // Be careful with ID types (string vs number)
+    const myFlights = state.flights.filter(f => myLeadIds.includes(Number(f.lead_id)) || myLeadIds.includes(String(f.lead_id)));
+
+    // 2. Calculate KPIs
+
+    // Revenue YTD (Assuming all flights are this year for demo, or filter by year)
+    const totalRevenue = myFlights.reduce((sum, f) => sum + Number(f.amount), 0);
+
+    // Conversion Rate
+    const closedLeads = myLeads.filter(l => l.status === 'Cerrado').length;
+    const totalLeads = myLeads.length;
+    const conversionRate = totalLeads > 0 ? (closedLeads / totalLeads) * 100 : 0;
+
+    // Active Referrers (Those with at least 1 lead)
+    const activeReferrersCount = myReferrers.filter(r =>
+        myLeads.some(l => l.referrer_id === r.id)
+    ).length;
+
+    // 3. Render KPIs
+    safeSetText('metric-total-revenue', `$${totalRevenue.toLocaleString()}`);
+    safeSetText('metric-conversion-rate', `${conversionRate.toFixed(1)}%`);
+    safeSetText('metric-active-referrers', activeReferrersCount);
+    safeSetText('metric-total-referrers', myReferrers.length);
+
+    const convBar = document.getElementById('metric-conversion-bar');
+    if (convBar) convBar.style.width = `${conversionRate}%`;
+
+    // 4. Render Chart (Last 6 Months)
+    renderRevenueChart(myFlights);
+
+    // 5. Render Top Referrers
+    renderTopPerformers(myReferrers, myLeads, myFlights);
+
+    // 6. Render Regional Breakdown
+    renderRegionalBreakdown(myFlights);
+}
+
+function safeSetText(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+}
+
+function renderRevenueChart(flights) {
+    const container = document.getElementById('revenue-chart-container');
+    if (!container) return;
+
+    // Group by Month (Last 6 Months)
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        months.push({
+            name: d.toLocaleString('es-ES', { month: 'short' }),
+            monthIdx: d.getMonth(),
+            year: d.getFullYear(),
+            total: 0
+        });
+    }
+
+    // Fill Data
+    flights.forEach(f => {
+        const d = new Date(f.flight_date || f.created_at);
+        const m = months.find(m => m.monthIdx === d.getMonth() && m.year === d.getFullYear());
+        if (m) m.total += Number(f.amount);
+    });
+
+    // Find Max for scaling
+    const maxVal = Math.max(...months.map(m => m.total)) || 1;
+
+    // Generate HTML
+    container.innerHTML = months.map(m => {
+        const heightPct = (m.total / maxVal) * 100;
+        const isCurrent = new Date().getMonth() === m.monthIdx;
+        const barColor = isCurrent ? 'bg-aviation-purple' : 'bg-white/10 group-hover:bg-white/20';
+
+        return `
+            <div class="h-full flex-1 flex flex-col justify-end items-center group relative">
+                <div class="mb-2 opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full text-[10px] font-bold text-white bg-aviation-dark px-2 py-1 rounded border border-white/10 pointer-events-none">
+                    $${m.total.toLocaleString()}
+                </div>
+                <div class="w-full max-w-[40px] rounded-t-lg transition-all duration-1000 ${barColor}" style="height: ${Math.max(heightPct, 4)}%"></div>
+                <span class="text-[10px] uppercase font-bold text-slate-500 mt-2">${m.name}</span>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderTopPerformers(referrers, leads, flights) {
+    const list = document.getElementById('top-performers-list');
+    if (!list) return;
+
+    // Calculate revenue per referrer
+    const ranked = referrers.map(r => {
+        const rLeads = leads.filter(l => l.referrer_id === r.id);
+        const rLeadIds = rLeads.map(l => l.id);
+        const rRevenue = flights
+            .filter(f => rLeadIds.includes(Number(f.lead_id)) || rLeadIds.includes(String(f.lead_id)))
+            .reduce((sum, f) => sum + Number(f.amount), 0);
+        return { ...r, revenue: rRevenue };
+    }).sort((a, b) => b.revenue - a.revenue).slice(0, 3);
+
+    list.innerHTML = ranked.map((r, i) => `
+        <div class="flex items-center justify-between p-4 bg-white/[0.02] rounded-2xl border border-white/5">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${i === 0 ? 'bg-yellow-500 text-black' : 'bg-white/10 text-white'}">
+                    ${i + 1}
+                </div>
+                <div>
+                    <h4 class="text-sm font-bold text-white">${r.name}</h4>
+                    <p class="text-[10px] text-slate-500 uppercase">${r.tier || 'Platinum'}</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <p class="text-xs font-bold text-aviation-purple">$${r.revenue.toLocaleString()}</p>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderRegionalBreakdown(flights) {
+    const tbody = document.getElementById('regional-breakdown-body');
+    if (!tbody) return;
+
+    const regions = {};
+    flights.forEach(f => {
+        const r = f.region || 'Desconocido';
+        if (!regions[r]) regions[r] = { count: 0, total: 0 };
+        regions[r].count++;
+        regions[r].total += Number(f.amount);
+    });
+
+    const sortedRegions = Object.entries(regions).sort((a, b) => b[1].total - a[1].total);
+
+    tbody.innerHTML = sortedRegions.map(([name, data]) => `
+        <tr class="hover:bg-white/[0.02] transition-colors">
+            <td class="px-6 py-4 text-white font-medium text-xs">${name}</td>
+            <td class="px-6 py-4 text-center text-slate-400 text-xs">${data.count}</td>
+            <td class="px-6 py-4 text-right text-white font-bold text-xs">$${data.total.toLocaleString()}</td>
+        </tr>
+    `).join('');
 }
 
 // FUNCIONES DE VUELOS
@@ -558,9 +756,10 @@ function calculateCommission() {
     const referrer = state.users.find(u => u.id === lead.referrer_id);
     // Default to Platinum for old data, but check logic
     const tier = referrer ? (referrer.tier || 'Platinum') : 'Platinum';
+    const referrerCategory = referrer ? (referrer.referrer_category || 'standard') : 'standard';
 
     // Find rate in state.commissions
-    const setting = state.commissions.find(c => c.tier === tier && c.region === region);
+    const setting = state.commissions.find(c => c.tier === tier && c.region === region && c.category === referrerCategory);
     const suggestedAmount = setting ? setting.amount : 0;
 
     if (suggestedAmount) {
@@ -589,8 +788,16 @@ function renderAdmin() {
                         </div>
                     </td>
                     <td class="px-8 py-6">
+                         <span class="text-xs text-slate-300 font-mono">${u.phone || '-'}</span>
+                    </td>
+                    <td class="px-8 py-6">
                         <span class="text-[10px] font-bold uppercase tracking-widest ${u.role === 'admin' ? 'text-red-500' : u.role === 'ejecutivo' ? 'text-blue-400' : 'text-slate-400'}">
                             ${u.role}
+                        </span>
+                    </td>
+                    <td class="px-8 py-6">
+                        <span class="text-[10px] font-bold uppercase tracking-widest ${u.referrer_category === 'b2b' ? 'text-aviation-purple' : 'text-slate-500'}">
+                            ${u.role === 'referidor' ? ((u.referrer_category === 'b2b' ? 'Empresarial' : 'Estándar')) : '-'}
                         </span>
                     </td>
                     <td class="px-8 py-6">
@@ -618,6 +825,10 @@ function renderAdmin() {
     populatePortfolioSelects();
 }
 
+function closeUserModal() {
+    document.getElementById('user-modal').classList.add('hidden');
+}
+
 /**
  * ADMIN HELPERS
  */
@@ -626,6 +837,12 @@ function toggleExecSelector(role) {
     if (container) {
         container.style.display = role === 'referidor' ? 'block' : 'none';
         if (role === 'referidor') populateExecSelect();
+    }
+
+    // Toggle Referrer Category Selector
+    const catSelector = document.getElementById('referrer-category-selector');
+    if (catSelector) {
+        catSelector.style.display = role === 'referidor' ? 'block' : 'none';
     }
 }
 
@@ -687,31 +904,56 @@ function filterOrphans() {
 function openEditAsignationModal(userId) {
     const modal = document.getElementById('user-modal');
     const form = document.querySelector('#user-modal form');
+    const titleEl = document.getElementById('user-modal-title');
+    const submitBtn = document.getElementById('user-modal-submit-btn');
 
     if (modal && form) {
-        const user = state.users.find(u => u.id === userId);
-        if (user) {
-            form.querySelector('[name="name"]').value = user.name || '';
-            form.querySelector('[name="email"]').value = user.email || '';
-            // Password field removed for security
-            const roleRadio = form.querySelector(`input[name="role"][value="${user.role}"]`);
-            if (roleRadio) roleRadio.checked = true;
+        if (userId) {
+            // EDIT MODE
+            const user = state.users.find(u => u.id === userId);
+            if (user) {
+                if (titleEl) titleEl.textContent = 'Editar Usuario';
+                if (submitBtn) submitBtn.textContent = 'Guardar Cambios';
 
-            toggleExecSelector(user.role);
+                form.querySelector('[name="id"]').value = user.id; // Set ID
+                form.querySelector('[name="name"]').value = user.name || '';
+                form.querySelector('[name="email"]').value = user.email || '';
+                form.querySelector('[name="phone"]').value = user.phone || '';
 
-            if (user.role === 'referidor') {
-                setTimeout(() => {
-                    const select = document.getElementById('assigned-exec-select');
-                    if (select) select.value = user.assigned_exec_id || "";
-                }, 10);
+                const roleRadio = form.querySelector(`input[name="role"][value="${user.role}"]`);
+                if (roleRadio) roleRadio.checked = true;
+
+                toggleExecSelector(user.role);
+
+                // Set Referrer Category
+                if (user.role === 'referidor') {
+                    const catRadio = form.querySelector(`input[name="referrer_category"][value="${user.referrer_category || 'standard'}"]`);
+                    if (catRadio) catRadio.checked = true;
+                }
+
+                if (user.role === 'referidor') {
+                    setTimeout(() => {
+                        const select = document.getElementById('assigned-exec-select');
+                        if (select) select.value = user.assigned_exec_id || "";
+                    }, 10);
+                }
             }
         } else {
-            // For new user creation if no userId is provided or user not found
-            form.querySelector('[name="name"]').value = '';
-            form.querySelector('[name="email"]').value = '';
-            // Password defaults to auto-generated or handled via invite in a real app
-            form.querySelector('input[name="role"][value="referidor"]').checked = true;
+            // CREATE MODE
+            if (titleEl) titleEl.textContent = 'Nuevo Usuario';
+            if (submitBtn) submitBtn.textContent = 'Crear Usuario';
+
+            form.reset(); // Reset form
+            form.querySelector('[name="id"]').value = ''; // Clear ID
+
+            // Set default role
+            const refRole = form.querySelector('input[name="role"][value="referidor"]');
+            if (refRole) refRole.checked = true;
+
             toggleExecSelector('referidor');
+            // Default category
+            const stdRadio = form.querySelector('input[name="referrer_category"][value="standard"]');
+            if (stdRadio) stdRadio.checked = true;
             setTimeout(() => {
                 const select = document.getElementById('assigned-exec-select');
                 if (select) select.value = "";
@@ -727,7 +969,8 @@ async function saveUser(event) {
     const name = formData.get('name');
     const email = formData.get('email');
     const role = formData.get('role');
-    const password = formData.get('password'); // Get password from form
+    const phone = formData.get('phone'); // Get phone
+    const referrerCategory = formData.get('referrer_category') || 'standard'; // Get category
 
     // Si es referidor, asignar ejecutivo
     let assignedExec = null;
@@ -738,16 +981,23 @@ async function saveUser(event) {
     // Nota: En una app real, aquí usaríamos supabase.auth.admin.createUser
     // Para esta demo/MVP, simularemos que el usuario existe en auth y crearemos/actualizaremos el perfil.
 
-    // Si es un nuevo usuario, generamos un UUID temporal (en prod lo daría Supabase Auth)
-    let user = state.users.find(u => u.email === email);
-    const userId = user ? user.id : self.crypto.randomUUID();
+    const id = formData.get('id'); // Get ID from hidden field
+
+    // Check if updating
+    let userId = id;
+
+    if (!userId) {
+        // Create new ID if not present
+        userId = self.crypto.randomUUID();
+    }
 
     const userData = {
         id: userId,
         name: name,
         email: email,
         role: role,
-        password: password, // Include password
+        referrer_category: role === 'referidor' ? referrerCategory : 'standard',
+        phone: phone, // Save phone
         assigned_exec_id: assignedExec,
         status: 'Activo'
     };
@@ -898,7 +1148,8 @@ function renderKnowledge(filter = '') {
             </div>
         `).join('') || '<p class="text-slate-500 text-sm italic">No se encontraron preguntas frecuentes.</p>';
     } else {
-        container.innerHTML = state.tips.map(tip => `
+        const filteredTips = state.tips.filter(t => t.title.toLowerCase().includes(filter.toLowerCase()) || t.content.toLowerCase().includes(filter.toLowerCase()));
+        container.innerHTML = filteredTips.map(tip => `
             <div class="glass p-6 rounded-2xl border border-white/5 bg-gradient-to-br from-aviation-purple/5 to-transparent">
                 <h4 class="text-white font-bold mb-3 flex items-center gap-2">
                     <svg class="w-4 h-4 text-aviation-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
@@ -1144,16 +1395,50 @@ async function updateCMSValue(id, field, value) {
 }
 
 // Commission Settings Logic
+let activeCommissionCategory = 'standard';
+
+function switchCommissionCategory(category) {
+    activeCommissionCategory = category;
+
+    // Visual Toggle
+    // IDs of buttons
+    const buttons = {
+        'standard': document.getElementById('btn-fees-standard'),
+        'b2b': document.getElementById('btn-fees-b2b'),
+        'platform_standard': document.getElementById('btn-fees-platform_standard'),
+        'platform_b2b': document.getElementById('btn-fees-platform_b2b')
+    };
+
+    // Reset all
+    Object.values(buttons).forEach(btn => {
+        if (btn) {
+            btn.classList.remove('bg-aviation-purple', 'text-white', 'shadow-lg');
+            btn.classList.add('text-slate-400', 'hover:text-white');
+        }
+    });
+
+    // Activate selected
+    // Activate selected
+    if (buttons[category]) {
+        buttons[category].classList.remove('text-slate-400', 'hover:text-white');
+        buttons[category].classList.add('bg-aviation-purple', 'text-white', 'shadow-lg');
+    }
+
+    renderCommissionSettings();
+}
+
 function renderCommissionSettings() {
     const tbody = document.getElementById('commission-settings-body');
     if (!tbody) return;
 
     // Get unique regions
-    const regions = [...new Set(state.commissions.map(c => c.region))];
+    const filteredCommissions = state.commissions.filter(c => c.category === activeCommissionCategory);
+    const regions = [...new Set(state.commissions.map(c => c.region))]; // Keep all regions available even if no B2B rate yet? Better to ensure we iterate all regions.
+    // Ideally we want all regions defined in the system. For now, let's use all regions found in ANY commission setting.
 
     tbody.innerHTML = regions.map(region => {
-        const plat = state.commissions.find(c => c.region === region && c.tier === 'Platinum');
-        const black = state.commissions.find(c => c.region === region && c.tier === 'Black');
+        const plat = filteredCommissions.find(c => c.region === region && c.tier === 'Platinum');
+        const black = filteredCommissions.find(c => c.region === region && c.tier === 'Black');
 
         const platVal = plat ? plat.amount : 0;
         const blackVal = black ? black.amount : 0;
@@ -1193,10 +1478,24 @@ async function saveCommissionSettings() {
 
     inputs.forEach(input => {
         const id = input.dataset.id;
+        const region = input.dataset.region;
+        const tier = input.dataset.tier;
         const val = parseFloat(input.value);
+
+        // Always include all keys for the unique constraint (region, tier, category)
+        // If ID exists, we can use it, but upsert on conflict key is safer/cleaner if ID is missing for new rows
+        const payload = {
+            region: region,
+            tier: tier,
+            amount: val,
+            category: activeCommissionCategory
+        };
+
         if (id && id !== "null") {
-            updates.push({ id: id, amount: val });
+            payload.id = id;
         }
+
+        updates.push(payload);
     });
 
     try {
@@ -1262,7 +1561,7 @@ function openProfileModal() {
     document.getElementById('profile-phone').value = user.phone || '';
     document.getElementById('profile-bank').value = user.bank || '';
     document.getElementById('profile-clabe').value = user.clabe || '';
-    document.getElementById('profile-bank-holder').value = user.bankHolder || '';
+    document.getElementById('profile-bank-holder').value = user.bank_holder || '';
 
     document.getElementById('profile-modal').classList.remove('hidden');
 }
@@ -1603,3 +1902,148 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+/**
+ * REVENUE DASHBOARD LOGIC
+ */
+function renderRevenueDashboard() {
+    const startInput = document.getElementById('revenue-start-date');
+    const endInput = document.getElementById('revenue-end-date');
+
+    // Default to current month if empty
+    if (!startInput.value) {
+        const date = new Date();
+        startInput.value = new Date(date.getFullYear(), date.getMonth(), 1).toISOString().split('T')[0];
+    }
+    if (!endInput.value) {
+        endInput.value = new Date().toISOString().split('T')[0];
+    }
+
+    const report = calculatePlatformRevenue(startInput.value, endInput.value);
+
+    // Update KPIs
+    const kpiStd = document.getElementById('kpi-revenue-standard');
+    const kpiB2b = document.getElementById('kpi-revenue-b2b');
+    const kpiTotal = document.getElementById('kpi-revenue-total');
+
+    if (kpiStd) kpiStd.textContent = '$' + report.totalStandard.toLocaleString();
+    if (kpiB2b) kpiB2b.textContent = '$' + report.totalB2B.toLocaleString();
+    if (kpiTotal) kpiTotal.textContent = '$' + report.total.toLocaleString();
+
+    // Render Table
+    const tbody = document.getElementById('revenue-table-body');
+    if (tbody) {
+        tbody.innerHTML = report.transactions.map(t => `
+            <tr class="hover:bg-white/[0.02] border-b border-white/5 text-[10px]">
+                <td class="px-6 py-4 text-slate-300">${t.date}</td>
+                <td class="px-6 py-4 font-bold text-white">${t.leadName}</td>
+                <td class="px-6 py-4 text-slate-300">${t.referrerName} (${t.referrerCategory})</td>
+                <td class="px-6 py-4 text-slate-300">${t.region} / ${t.tier}</td>
+                <td class="px-6 py-4 font-bold text-aviation-purple">$${t.amount.toLocaleString()}</td>
+            </tr>
+        `).join('') || '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500 italic">No hay transacciones en este periodo.</td></tr>';
+    }
+}
+
+function calculatePlatformRevenue(startStr, endStr) {
+    const startDate = new Date(startStr);
+    const endDate = new Date(endStr);
+    // Fix timezone offset for inclusive comparison
+    endDate.setHours(23, 59, 59, 999);
+
+    const transactions = [];
+    let totalStandard = 0;
+    let totalB2B = 0;
+
+    // Filter leads that are "won" or have flights
+    console.log('[Revenue] Total Leads:', state.leads ? state.leads.length : 0);
+    console.log('[Revenue] Total Commission Settings:', state.commissions ? state.commissions.length : 0);
+
+    const wonLeads = (state.leads || []).filter(l => {
+        // Debug status casing
+        const status = (l.status || '').toLowerCase();
+        // User Request: Consider ONLY 'ACTIVO' (DB values migrated to this)
+        const isWon = status === 'activo';
+
+        if (!isWon) return false;
+
+        const d = new Date(l.created_at);
+        return d >= startDate && d <= endDate;
+    });
+
+    console.log('[Revenue] Won Leads in Date Range:', wonLeads.length);
+
+
+    wonLeads.forEach(lead => {
+        const referrer = state.users.find(u => u.id === lead.referrer_id);
+        const refCategory = referrer ? (referrer.referrer_category || 'standard') : 'standard';
+
+        // Determine Platform Rate Category
+        const platformCategory = refCategory === 'b2b' ? 'platform_b2b' : 'platform_standard';
+
+        // Find Rate
+        const tier = referrer ? (referrer.tier || 'Platinum') : 'Platinum';
+
+        // Dynamic Region logic: try to match ANY region first since our demo might not have region data
+        // If lead has region, use it. If not, use first available region in settings just to show data (Mock behavior)
+        // In Prod: lead.region should be mandatory.
+        let region = lead.region || 'Europa y Asia';
+
+        // Debug matching
+        // console.log(`[Revenue] Processing Lead: ${lead.name}, Ref: ${refCategory}, Tier: ${tier}, Region: ${region}`);
+
+        let rateSetting = state.commissions.find(c => c.category === platformCategory && c.tier === tier && c.region === region);
+
+        // FALLBACK FOR DEMO: If specific region not found, try to find ANY rate for this tier/category to avoid $0
+        if (!rateSetting) {
+            rateSetting = state.commissions.find(c => c.category === platformCategory && c.tier === tier);
+            if (rateSetting) region = rateSetting.region; // Update region for display
+        }
+
+        const amount = rateSetting ? Number(rateSetting.amount) : 0;
+
+        if (amount > 0) {
+            if (refCategory === 'b2b') totalB2B += amount;
+            else totalStandard += amount;
+
+            transactions.push({
+                date: new Date(lead.created_at).toLocaleDateString(),
+                leadName: lead.name,
+                referrerName: referrer ? referrer.name : 'Desconocido',
+                referrerCategory: refCategory === 'b2b' ? 'B2B' : 'Standard',
+                region: region,
+                tier: tier,
+                amount: amount
+            });
+        }
+    });
+
+    return {
+        transactions,
+        totalStandard,
+        totalB2B,
+        total: totalStandard + totalB2B
+    };
+}
+
+function exportRevenueCSV() {
+    const start = document.getElementById('revenue-start-date').value;
+    const end = document.getElementById('revenue-end-date').value;
+    const report = calculatePlatformRevenue(start, end);
+
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Fecha,Vuelo,Referidor,Categoria,Region,Nivel,Monto Plataforma\n";
+
+    report.transactions.forEach(t => {
+        const row = `${t.date},"${t.leadName}","${t.referrerName}",${t.referrerCategory},"${t.region}",${t.tier},${t.amount}`;
+        csvContent += row + "\n";
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `ingresos_plataforma_${start}_${end}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
