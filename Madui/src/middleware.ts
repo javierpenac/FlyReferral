@@ -29,10 +29,10 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/dashboard', request.url))
     }
 
-    // Check admin role for admin routes
+    // Check admin/analyst role for admin routes
     if (isAdminRoute && user) {
         const role = user.user_metadata?.role
-        if (role !== 'admin') {
+        if (role !== 'admin' && role !== 'analyst') {
             return NextResponse.redirect(new URL('/dashboard', request.url))
         }
     }

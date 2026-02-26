@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Logo } from '@/components/ui/Logo'
 import { createClient } from '@/lib/supabase/server'
 
@@ -94,17 +95,46 @@ export default async function PromocionesPage() {
                             const discount = offer.original_price > 0
                                 ? Math.round(((offer.original_price - offer.offer_price) / offer.original_price) * 100)
                                 : 0
+                            const isFree = offer.offer_price === 0
+                            const is2x1 = offer.title.toLowerCase().includes('2x1')
+                            const is3x2 = offer.title.toLowerCase().includes('3x2')
+                            const hasGift = offer.title.toLowerCase().includes('gratis') || offer.title.toLowerCase().includes('regalo')
                             const profile = offer.profiles
                             const expiryDate = new Date(offer.expiry_date)
 
+                            // Dynamic badge text
+                            const badgeText = isFree ? 'GRATIS' : is2x1 ? '2×1' : is3x2 ? '3×2' : hasGift && discount < 10 ? '🎁 REGALO' : `-${discount}%`
+                            // Dynamic banner gradient based on offer type
+                            const bannerClass = isFree
+                                ? 'bg-gradient-to-r from-emerald-500 to-emerald-400'
+                                : is2x1 || is3x2
+                                    ? 'bg-gradient-to-r from-violet-600 to-fuchsia-500'
+                                    : discount >= 40
+                                        ? 'bg-gradient-to-r from-red-500 to-orange-400'
+                                        : 'bg-gradient-to-r from-[var(--madui-accent)] to-[var(--madui-accent-light)]'
+
                             return (
                                 <div key={offer.id} className="bg-white rounded-2xl border border-[var(--madui-border)] overflow-hidden hover:shadow-lg transition-all group">
-                                    {/* Discount Banner */}
-                                    <div className="bg-gradient-to-r from-[var(--madui-accent)] to-[var(--madui-accent-light)] px-5 py-3 flex items-center justify-between">
-                                        <span className="text-white font-bold text-lg">-{discount}%</span>
-                                        <span className="text-white/80 text-xs">
-                                            Válido hasta {expiryDate.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
-                                        </span>
+                                    {/* Offer Image */}
+                                    <div className="relative aspect-[16/10] bg-gray-100">
+                                        {offer.image_url && (
+                                            <Image
+                                                src={offer.image_url}
+                                                alt={offer.title}
+                                                fill
+                                                className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                                            />
+                                        )}
+                                        {/* Discount Badge on Image */}
+                                        <div className={`${bannerClass} absolute top-3 left-3 px-3 py-1.5 rounded-xl shadow-lg`}>
+                                            <span className="text-white font-bold text-sm">{badgeText}</span>
+                                        </div>
+                                        <div className="absolute top-3 right-3 bg-black/50 backdrop-blur-sm px-2.5 py-1 rounded-lg">
+                                            <span className="text-white/90 text-xs">
+                                                Hasta {expiryDate.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
+                                            </span>
+                                        </div>
                                     </div>
 
                                     <div className="p-5">
@@ -113,17 +143,28 @@ export default async function PromocionesPage() {
                                             {offer.title}
                                         </h3>
                                         {offer.description && (
-                                            <p className="text-sm text-[var(--madui-text-secondary)] mb-4 line-clamp-2">{offer.description}</p>
+                                            <p className="text-sm text-[var(--madui-text-secondary)] mb-4 line-clamp-3">{offer.description}</p>
                                         )}
 
                                         {/* Pricing */}
                                         <div className="flex items-baseline gap-3 mb-4">
-                                            <span className="text-2xl font-bold text-[var(--madui-primary)]">
-                                                ${offer.offer_price.toLocaleString('es-MX')}
-                                            </span>
-                                            <span className="text-sm text-[var(--madui-text-muted)] line-through">
-                                                ${offer.original_price.toLocaleString('es-MX')}
-                                            </span>
+                                            {isFree ? (
+                                                <span className="text-2xl font-bold text-emerald-600">GRATIS</span>
+                                            ) : (
+                                                <span className="text-2xl font-bold text-[var(--madui-primary)]">
+                                                    ${offer.offer_price.toLocaleString('es-MX')}
+                                                </span>
+                                            )}
+                                            {offer.original_price !== offer.offer_price && (
+                                                <span className="text-sm text-[var(--madui-text-muted)] line-through">
+                                                    ${offer.original_price.toLocaleString('es-MX')}
+                                                </span>
+                                            )}
+                                            {discount > 0 && !isFree && (
+                                                <span className="text-xs font-semibold text-white bg-red-500 px-2 py-0.5 rounded-full">
+                                                    Ahorras ${(offer.original_price - offer.offer_price).toLocaleString('es-MX')}
+                                                </span>
+                                            )}
                                         </div>
 
                                         {/* Business Info */}

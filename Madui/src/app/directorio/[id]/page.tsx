@@ -1,8 +1,24 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Logo } from '@/components/ui/Logo'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import type { Metadata } from 'next'
+
+const categoryImages: Record<string, string> = {
+    'comida-bebidas': '/categories/comida-bebidas.png',
+    'belleza-bienestar': '/categories/belleza-bienestar.png',
+    'salud': '/categories/salud.png',
+    'educacion': '/categories/educacion.png',
+    'tecnologia': '/categories/tecnologia.png',
+    'hogar-jardin': '/categories/hogar-jardin.png',
+    'moda-accesorios': '/categories/moda-accesorios.png',
+    'deportes-fitness': '/categories/deportes-fitness.png',
+    'mascotas': '/categories/mascotas.png',
+    'arte-cultura': '/categories/arte-cultura.png',
+    'servicios-profesionales': '/categories/servicios-profesionales.png',
+    'otro': '/categories/otro.png',
+}
 
 interface Props {
     params: Promise<{ id: string }>
@@ -37,7 +53,7 @@ export default async function EntrepreneurProfilePage({ params }: Props) {
 
     const { data: profile, error } = await supabase
         .from('profiles')
-        .select('*, categories(name, emoji)')
+        .select('*, categories(name, emoji, slug)')
         .eq('id', id)
         .eq('verification_status', 'aprobado')
         .single()
@@ -46,11 +62,27 @@ export default async function EntrepreneurProfilePage({ params }: Props) {
 
     const { data: reviews } = await supabase
         .from('reviews')
-        .select('*, reviewer:reviewer_id(full_name:raw_user_meta_data->>full_name)')
+        .select('id, rating, comment, is_approved, entrepreneur_reply, replied_at, created_at, updated_at, reviewer_id, profile_id')
         .eq('profile_id', id)
         .eq('is_approved', true)
         .order('created_at', { ascending: false })
         .limit(10)
+
+    // Fetch reviewer names from profiles since reviewer_id FK goes to auth.users (not accessible from client)
+    let reviewsWithNames = null
+    if (reviews && reviews.length > 0) {
+        const reviewerIds = [...new Set(reviews.map(r => r.reviewer_id))]
+        const { data: reviewerProfiles } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .in('id', reviewerIds)
+
+        const reviewerMap = new Map(reviewerProfiles?.map(p => [p.id, p.full_name]) || [])
+        reviewsWithNames = reviews.map(r => ({
+            ...r,
+            reviewer: { full_name: reviewerMap.get(r.reviewer_id) || 'Vecino de Zibatá' }
+        }))
+    }
 
     let premiumFeatures = null
     if (profile.plan_type === 'premium') {
@@ -64,7 +96,7 @@ export default async function EntrepreneurProfilePage({ params }: Props) {
         offers = data
     }
 
-    const avgRating = reviews && reviews.length > 0 ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1) : null
+    const avgRating = reviewsWithNames && reviewsWithNames.length > 0 ? (reviewsWithNames.reduce((sum: number, r: { rating: number }) => sum + r.rating, 0) / reviewsWithNames.length).toFixed(1) : null
     const cat = profile.categories as { name?: string; emoji?: string } | null
 
     return (
@@ -84,12 +116,18 @@ export default async function EntrepreneurProfilePage({ params }: Props) {
                         {profile.plan_type === 'premium' && <span className="absolute top-4 right-4 premium-badge text-sm">⭐ Premium</span>}
                     </div>
                     <div className="px-6 pb-6 -mt-12">
-                        <div className="w-24 h-24 rounded-2xl border-4 border-white bg-gradient-to-br from-[var(--madui-primary-lighter)] to-gray-100 flex items-center justify-center shadow-md overflow-hidden mb-4">
+                        <div className="w-24 h-24 rounded-2xl border-4 border-white bg-gradient-to-br from-[var(--madui-primary-lighter)] to-gray-100 flex items-center justify-center shadow-md overflow-hidden mb-4 relative">
                             {profile.profile_photo_url ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img src={profile.profile_photo_url} alt={profile.business_name || ''} className="w-full h-full object-cover" />
                             ) : (
-                                <span className="text-4xl">{cat?.emoji || '🏪'}</span>
+                                <Image
+                                    src={categoryImages[(cat as { slug?: string } | null)?.slug || 'otro'] || '/categories/otro.png'}
+                                    alt={cat?.name || 'Negocio'}
+                                    fill
+                                    className="object-cover"
+                                    sizes="96px"
+                                />
                             )}
                         </div>
                         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
@@ -104,7 +142,7 @@ export default async function EntrepreneurProfilePage({ params }: Props) {
                                     <div className="flex items-center gap-1 mt-2">
                                         <span className="text-[var(--madui-accent)]">★</span>
                                         <span className="text-sm font-semibold text-[var(--madui-text)]">{avgRating}</span>
-                                        <span className="text-sm text-[var(--madui-text-muted)]">({reviews?.length} reseña{reviews?.length !== 1 ? 's' : ''})</span>
+                                        <span className="text-sm text-[var(--madui-text-muted)]">({reviewsWithNames?.length || 0} reseña{(reviewsWithNames?.length || 0) !== 1 ? 's' : ''})</span>
                                     </div>
                                 )}
                             </div>
@@ -157,9 +195,9 @@ export default async function EntrepreneurProfilePage({ params }: Props) {
 
                         <div className="bg-white rounded-2xl border border-[var(--madui-border)] p-6">
                             <h2 className="text-lg font-semibold text-[var(--madui-text)] mb-4 font-[family-name:var(--font-montserrat)]">Reseñas de Vecinos</h2>
-                            {reviews && reviews.length > 0 ? (
+                            {reviewsWithNames && reviewsWithNames.length > 0 ? (
                                 <div className="space-y-4">
-                                    {reviews.map((review) => (
+                                    {reviewsWithNames.map((review: { id: string; rating: number; comment: string; reviewer: { full_name: string }; entrepreneur_reply?: string; replied_at?: string; created_at: string }) => (
                                         <div key={review.id} className="pb-4 border-b border-[var(--madui-border-light)] last:border-0 last:pb-0">
                                             <div className="flex items-center gap-2 mb-1">
                                                 <div className="flex text-[var(--madui-accent)]">
@@ -167,7 +205,8 @@ export default async function EntrepreneurProfilePage({ params }: Props) {
                                                         <span key={s} className={s <= review.rating ? '' : 'opacity-20'}>★</span>
                                                     ))}
                                                 </div>
-                                                <span className="text-xs text-[var(--madui-text-muted)]">{new Date(review.created_at).toLocaleDateString('es-MX')}</span>
+                                                <span className="text-sm font-medium text-[var(--madui-text)]">{review.reviewer?.full_name || 'Vecino de Zibatá'}</span>
+                                                <span className="text-xs text-[var(--madui-text-muted)]">· {new Date(review.created_at).toLocaleDateString('es-MX')}</span>
                                             </div>
                                             {review.comment && <p className="text-sm text-[var(--madui-text-secondary)]">{review.comment}</p>}
                                             {review.entrepreneur_reply && (

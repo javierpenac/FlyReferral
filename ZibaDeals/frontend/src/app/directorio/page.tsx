@@ -1,22 +1,5 @@
 import Link from 'next/link'
-import Image from 'next/image'
-import { Logo } from '@/components/ui/Logo'
 import { createClient } from '@/lib/supabase/server'
-
-const categoryImages: Record<string, string> = {
-    'comida-bebidas': '/categories/comida-bebidas.png',
-    'belleza-bienestar': '/categories/belleza-bienestar.png',
-    'salud': '/categories/salud.png',
-    'educacion': '/categories/educacion.png',
-    'tecnologia': '/categories/tecnologia.png',
-    'hogar-jardin': '/categories/hogar-jardin.png',
-    'moda-accesorios': '/categories/moda-accesorios.png',
-    'deportes-fitness': '/categories/deportes-fitness.png',
-    'mascotas': '/categories/mascotas.png',
-    'arte-cultura': '/categories/arte-cultura.png',
-    'servicios-profesionales': '/categories/servicios-profesionales.png',
-    'otro': '/categories/otro.png',
-}
 
 interface SearchParams {
     q?: string
@@ -76,25 +59,41 @@ export default async function DirectorioPage({
             <header className="bg-white border-b border-[var(--madui-border)] sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4">
                     <div className="flex items-center justify-between h-16">
-                        <Logo size="md" linkTo="/" />
+                        <Link href="/" className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-xl bg-[var(--madui-primary)] flex items-center justify-center shadow-sm">
+                                <span className="text-white font-bold text-lg">M</span>
+                            </div>
+                            <span className="text-xl font-bold text-[var(--madui-primary)] font-[family-name:var(--font-montserrat)]">
+                                Madui
+                            </span>
+                        </Link>
 
                         <nav className="hidden md:flex items-center gap-6">
-                            <Link href="/directorio" className="text-sm font-semibold text-[var(--madui-primary)]">
+                            <Link
+                                href="/directorio"
+                                className="text-sm font-semibold text-[var(--madui-primary)]"
+                            >
                                 Directorio
                             </Link>
-                            <Link href="/promociones" className="text-sm font-medium text-[var(--madui-text-secondary)] hover:text-[var(--madui-primary)] transition-colors">
-                                Promociones
-                            </Link>
-                            <Link href="/emprendedores" className="text-sm font-medium text-[var(--madui-text-secondary)] hover:text-[var(--madui-primary)] transition-colors">
-                                Emprendedores
+                            <Link
+                                href="/#categorias"
+                                className="text-sm font-medium text-[var(--madui-text-secondary)] hover:text-[var(--madui-primary)] transition-colors"
+                            >
+                                Categorías
                             </Link>
                         </nav>
 
                         <div className="flex items-center gap-3">
-                            <Link href="/login" className="text-sm font-medium text-[var(--madui-text-secondary)] hover:text-[var(--madui-primary)] transition-colors hidden sm:block">
+                            <Link
+                                href="/login"
+                                className="text-sm font-medium text-[var(--madui-text-secondary)] hover:text-[var(--madui-primary)] transition-colors hidden sm:block"
+                            >
                                 Iniciar Sesión
                             </Link>
-                            <Link href="/register" className="px-4 py-2 bg-[var(--madui-primary)] text-white text-sm font-semibold rounded-xl hover:bg-[var(--madui-primary-light)] transition-colors shadow-sm">
+                            <Link
+                                href="/register"
+                                className="px-4 py-2 bg-[var(--madui-primary)] text-white text-sm font-semibold rounded-xl hover:bg-[var(--madui-primary-light)] transition-colors shadow-sm"
+                            >
                                 Registrar Negocio
                             </Link>
                         </div>
@@ -111,18 +110,38 @@ export default async function DirectorioPage({
 
                     <form className="flex gap-3 mb-4">
                         <div className="relative flex-1">
-                            <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--madui-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            <svg
+                                className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--madui-text-muted)]"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                                />
                             </svg>
-                            <input type="text" name="q" defaultValue={params.q} placeholder="Busca por nombre, categoría o descripción..." className="w-full pl-12 pr-4 py-3 border border-[var(--madui-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--madui-primary)] focus:ring-opacity-20 focus:border-[var(--madui-primary)] text-sm bg-white" />
+                            <input
+                                type="text"
+                                name="q"
+                                defaultValue={params.q}
+                                placeholder="Busca por nombre, categoría o descripción..."
+                                className="w-full pl-12 pr-4 py-3 border border-[var(--madui-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--madui-primary)] focus:ring-opacity-20 focus:border-[var(--madui-primary)] text-sm bg-white"
+                            />
                         </div>
-                        <button type="submit" className="px-6 py-3 bg-[var(--madui-primary)] text-white text-sm font-semibold rounded-xl hover:bg-[var(--madui-primary-light)] transition-colors shadow-sm">
+                        <button
+                            type="submit"
+                            className="px-6 py-3 bg-[var(--madui-primary)] text-white text-sm font-semibold rounded-xl hover:bg-[var(--madui-primary-light)] transition-colors shadow-sm"
+                        >
                             Buscar
                         </button>
                     </form>
 
                     {/* Filters */}
                     <div className="flex flex-wrap gap-3 items-center">
+                        {/* Type filter */}
                         <div className="flex gap-2">
                             <Link
                                 href={`/directorio?${new URLSearchParams({
@@ -130,8 +149,8 @@ export default async function DirectorioPage({
                                     ...(params.categoria ? { categoria: params.categoria } : {}),
                                 }).toString()}`}
                                 className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${!params.tipo
-                                    ? 'bg-[var(--madui-primary)] text-white border-[var(--madui-primary)]'
-                                    : 'bg-white text-[var(--madui-text-secondary)] border-[var(--madui-border)] hover:border-gray-400'
+                                        ? 'bg-[var(--madui-primary)] text-white border-[var(--madui-primary)]'
+                                        : 'bg-white text-[var(--madui-text-secondary)] border-[var(--madui-border)] hover:border-gray-400'
                                     }`}
                             >
                                 Todos
@@ -143,8 +162,8 @@ export default async function DirectorioPage({
                                     tipo: 'producto',
                                 }).toString()}`}
                                 className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${params.tipo === 'producto'
-                                    ? 'bg-[var(--madui-primary)] text-white border-[var(--madui-primary)]'
-                                    : 'bg-white text-[var(--madui-text-secondary)] border-[var(--madui-border)] hover:border-gray-400'
+                                        ? 'bg-[var(--madui-primary)] text-white border-[var(--madui-primary)]'
+                                        : 'bg-white text-[var(--madui-text-secondary)] border-[var(--madui-border)] hover:border-gray-400'
                                     }`}
                             >
                                 📦 Productos
@@ -156,16 +175,18 @@ export default async function DirectorioPage({
                                     tipo: 'servicio',
                                 }).toString()}`}
                                 className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${params.tipo === 'servicio'
-                                    ? 'bg-[var(--madui-primary)] text-white border-[var(--madui-primary)]'
-                                    : 'bg-white text-[var(--madui-text-secondary)] border-[var(--madui-border)] hover:border-gray-400'
+                                        ? 'bg-[var(--madui-primary)] text-white border-[var(--madui-primary)]'
+                                        : 'bg-white text-[var(--madui-text-secondary)] border-[var(--madui-border)] hover:border-gray-400'
                                     }`}
                             >
                                 🛎️ Servicios
                             </Link>
                         </div>
 
+                        {/* Divider */}
                         <div className="hidden sm:block w-px h-6 bg-[var(--madui-border)]" />
 
+                        {/* Category pills */}
                         <div className="flex flex-wrap gap-2">
                             {(categories || []).slice(0, 8).map((cat) => (
                                 <Link
@@ -173,11 +194,13 @@ export default async function DirectorioPage({
                                     href={`/directorio?${new URLSearchParams({
                                         ...(params.q ? { q: params.q } : {}),
                                         ...(params.tipo ? { tipo: params.tipo } : {}),
-                                        ...(params.categoria === cat.slug ? {} : { categoria: cat.slug }),
+                                        ...(params.categoria === cat.slug
+                                            ? {}
+                                            : { categoria: cat.slug }),
                                     }).toString()}`}
                                     className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${params.categoria === cat.slug
-                                        ? 'bg-[var(--madui-primary)] text-white border-[var(--madui-primary)]'
-                                        : 'bg-white text-[var(--madui-text-secondary)] border-[var(--madui-border)] hover:border-gray-400'
+                                            ? 'bg-[var(--madui-primary)] text-white border-[var(--madui-primary)]'
+                                            : 'bg-white text-[var(--madui-text-secondary)] border-[var(--madui-border)] hover:border-gray-400'
                                         }`}
                                 >
                                     {cat.emoji} {cat.name}
@@ -185,8 +208,12 @@ export default async function DirectorioPage({
                             ))}
                         </div>
 
+                        {/* Clear filters */}
                         {activeFilters > 0 && (
-                            <Link href="/directorio" className="text-xs text-[var(--madui-error)] hover:underline ml-2">
+                            <Link
+                                href="/directorio"
+                                className="text-xs text-[var(--madui-error)] hover:underline ml-2"
+                            >
                                 Limpiar filtros ({activeFilters})
                             </Link>
                         )}
@@ -205,22 +232,29 @@ export default async function DirectorioPage({
                 {entrepreneurs && entrepreneurs.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                         {entrepreneurs.map((profile) => (
-                            <Link key={profile.id} href={`/directorio/${profile.id}`} className="bento-card group">
-                                <div className="aspect-[4/3] bg-gradient-to-br from-[var(--madui-primary-lighter)] to-gray-100 flex items-center justify-center relative overflow-hidden">
+                            <Link
+                                key={profile.id}
+                                href={`/directorio/${profile.id}`}
+                                className="bento-card group"
+                            >
+                                <div className="aspect-[4/3] bg-gradient-to-br from-[var(--madui-primary-lighter)] to-gray-100 flex items-center justify-center relative">
                                     {profile.profile_photo_url ? (
                                         // eslint-disable-next-line @next/next/no-img-element
-                                        <img src={profile.profile_photo_url} alt={profile.business_name || ''} className="w-full h-full object-cover" />
-                                    ) : (
-                                        <Image
-                                            src={categoryImages[(profile.categories as { slug?: string } | null)?.slug || 'otro'] || '/categories/otro.png'}
-                                            alt={(profile.categories as { name?: string } | null)?.name || 'Negocio'}
-                                            fill
-                                            className="object-cover"
-                                            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                                        <img
+                                            src={profile.profile_photo_url}
+                                            alt={profile.business_name || ''}
+                                            className="w-full h-full object-cover"
                                         />
+                                    ) : (
+                                        <span className="text-5xl">
+                                            {(profile.categories as { emoji?: string } | null)
+                                                ?.emoji || '🏪'}
+                                        </span>
                                     )}
                                     {profile.plan_type === 'premium' && (
-                                        <span className="absolute top-3 right-3 premium-badge">⭐ Premium</span>
+                                        <span className="absolute top-3 right-3 premium-badge">
+                                            ⭐ Premium
+                                        </span>
                                     )}
                                 </div>
 
@@ -233,12 +267,16 @@ export default async function DirectorioPage({
                                         {profile.business_name || profile.full_name || 'Emprendedor'}
                                     </h3>
                                     {profile.bio && (
-                                        <p className="text-sm text-[var(--madui-text-secondary)] mt-1 line-clamp-2">{profile.bio}</p>
+                                        <p className="text-sm text-[var(--madui-text-secondary)] mt-1 line-clamp-2">
+                                            {profile.bio}
+                                        </p>
                                     )}
                                     <div className="flex items-center gap-2 mt-3">
                                         <span className="verified-badge">✓ Verificado</span>
                                         {profile.business_type && (
-                                            <span className="text-xs text-[var(--madui-text-muted)] capitalize">{profile.business_type}</span>
+                                            <span className="text-xs text-[var(--madui-text-muted)] capitalize">
+                                                {profile.business_type}
+                                            </span>
                                         )}
                                     </div>
                                 </div>
@@ -256,7 +294,10 @@ export default async function DirectorioPage({
                                 ? `No hay emprendedores que coincidan con "${params.q}".`
                                 : 'Aún no hay emprendedores aprobados en esta categoría.'}
                         </p>
-                        <Link href="/directorio" className="inline-flex px-6 py-3 bg-[var(--madui-primary)] text-white font-semibold rounded-xl hover:bg-[var(--madui-primary-light)] transition-colors shadow-sm">
+                        <Link
+                            href="/directorio"
+                            className="inline-flex px-6 py-3 bg-[var(--madui-primary)] text-white font-semibold rounded-xl hover:bg-[var(--madui-primary-light)] transition-colors shadow-sm"
+                        >
                             Ver todos
                         </Link>
                     </div>

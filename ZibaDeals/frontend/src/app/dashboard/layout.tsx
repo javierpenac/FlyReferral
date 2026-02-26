@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Logo } from '@/components/ui/Logo'
 
 export default async function DashboardLayout({
     children,
@@ -24,14 +23,24 @@ export default async function DashboardLayout({
 
     const isPremium = profile?.plan_type === 'premium'
     const isAdmin = user.user_metadata?.role === 'admin'
-    const isAnalyst = user.user_metadata?.role === 'analyst'
-    const hasAdminAccess = isAdmin || isAnalyst
 
     const navItems = [
         { label: 'Resumen', href: '/dashboard', icon: '📊', always: true },
         { label: 'Mi Perfil', href: '/dashboard/perfil', icon: '👤', always: true },
-        { label: 'Ofertas', href: '/dashboard/ofertas', icon: '🏷️', always: false, premiumOnly: true },
-        { label: 'Métricas', href: '/dashboard/metricas', icon: '📈', always: false, premiumOnly: true },
+        {
+            label: 'Ofertas',
+            href: '/dashboard/ofertas',
+            icon: '🏷️',
+            always: false,
+            premiumOnly: true,
+        },
+        {
+            label: 'Métricas',
+            href: '/dashboard/metricas',
+            icon: '📈',
+            always: false,
+            premiumOnly: true,
+        },
         { label: 'Plan', href: '/dashboard/plan', icon: '⭐', always: true },
     ]
 
@@ -41,12 +50,22 @@ export default async function DashboardLayout({
             <header className="bg-white border-b border-[var(--madui-border)] sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4">
                     <div className="flex items-center justify-between h-16">
-                        <Logo size="md" linkTo="/" />
+                        <Link href="/" className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-xl bg-[var(--madui-primary)] flex items-center justify-center shadow-sm">
+                                <span className="text-white font-bold text-lg">M</span>
+                            </div>
+                            <span className="text-xl font-bold text-[var(--madui-primary)] font-[family-name:var(--font-montserrat)]">
+                                Madui
+                            </span>
+                        </Link>
 
                         <div className="flex items-center gap-4">
-                            {hasAdminAccess && (
-                                <Link href="/admin" className="text-xs font-medium text-[var(--madui-accent-dark)] bg-[var(--madui-accent-lighter)] px-3 py-1 rounded-full">
-                                    {isAdmin ? 'Admin' : 'Panel'}
+                            {isAdmin && (
+                                <Link
+                                    href="/admin"
+                                    className="text-xs font-medium text-[var(--madui-accent-dark)] bg-[var(--madui-accent-lighter)] px-3 py-1 rounded-full"
+                                >
+                                    Admin
                                 </Link>
                             )}
                             <div className="text-right hidden sm:block">
@@ -58,7 +77,10 @@ export default async function DashboardLayout({
                                 </p>
                             </div>
                             <form action="/auth/signout" method="post">
-                                <button type="submit" className="text-xs text-[var(--madui-text-muted)] hover:text-[var(--madui-error)] transition-colors">
+                                <button
+                                    type="submit"
+                                    className="text-xs text-[var(--madui-text-muted)] hover:text-[var(--madui-error)] transition-colors"
+                                >
                                     Cerrar Sesión
                                 </button>
                             </form>
@@ -115,7 +137,11 @@ export default async function DashboardLayout({
                         .filter((item) => item.always || (item.premiumOnly && isPremium))
                         .slice(0, 5)
                         .map((item) => (
-                            <Link key={item.href} href={item.href} className="flex flex-col items-center gap-0.5 px-2 py-1 text-[var(--madui-text-muted)]">
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                className="flex flex-col items-center gap-0.5 px-2 py-1 text-[var(--madui-text-muted)]"
+                            >
                                 <span className="text-xl">{item.icon}</span>
                                 <span className="text-[10px]">{item.label}</span>
                             </Link>

@@ -1,0 +1,217 @@
+@import "tailwindcss";
+
+/* ============================================
+   MADUI — Design System Tokens
+   Comunidad Emprendedora de Zibatá
+   ============================================ */
+
+:root {
+  /* Primary — Verde Bosque */
+  --madui-primary: #2D5A27;
+  --madui-primary-light: #3D7A34;
+  --madui-primary-lighter: #E8F5E3;
+  --madui-primary-dark: #1E3D1A;
+
+  /* Accent — Oro Suave */
+  --madui-accent: #E6B325;
+  --madui-accent-light: #F5D060;
+  --madui-accent-lighter: #FDF6E0;
+  --madui-accent-dark: #C4961A;
+
+  /* Neutrals */
+  --madui-bg: #F8FAFC;
+  --madui-bg-card: #FFFFFF;
+  --madui-text: #1E293B;
+  --madui-text-secondary: #64748B;
+  --madui-text-muted: #94A3B8;
+  --madui-border: #E2E8F0;
+  --madui-border-light: #F1F5F9;
+
+  /* Feedback */
+  --madui-success: #16A34A;
+  --madui-warning: #F59E0B;
+  --madui-error: #DC2626;
+  --madui-info: #2563EB;
+
+  /* Shadows */
+  --madui-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --madui-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --madui-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --madui-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+
+  /* Radius */
+  --madui-radius-sm: 0.375rem;
+  --madui-radius: 0.5rem;
+  --madui-radius-md: 0.75rem;
+  --madui-radius-lg: 1rem;
+  --madui-radius-xl: 1.5rem;
+
+  /* Transitions */
+  --madui-transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --madui-transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Tailwind v4 custom theme tokens */
+@theme inline {
+  --color-primary: var(--madui-primary);
+  --color-primary-light: var(--madui-primary-light);
+  --color-primary-lighter: var(--madui-primary-lighter);
+  --color-primary-dark: var(--madui-primary-dark);
+  --color-accent: var(--madui-accent);
+  --color-accent-light: var(--madui-accent-light);
+  --color-accent-lighter: var(--madui-accent-lighter);
+  --color-accent-dark: var(--madui-accent-dark);
+  --color-background: var(--madui-bg);
+  --color-foreground: var(--madui-text);
+  --color-muted: var(--madui-text-muted);
+  --color-secondary: var(--madui-text-secondary);
+  --color-card: var(--madui-bg-card);
+  --color-border: var(--madui-border);
+  --color-border-light: var(--madui-border-light);
+  --font-heading: var(--font-montserrat);
+  --font-body: var(--font-inter);
+}
+
+/* ============================================
+   Base Styles
+   ============================================ */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--madui-bg);
+  color: var(--madui-text);
+  font-family: var(--font-inter), 'Inter', system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-montserrat), 'Montserrat', system-ui, sans-serif;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--madui-text);
+}
+
+/* ============================================
+   Utility Classes
+   ============================================ */
+
+/* Premium badge glow effect */
+.premium-badge {
+  background: linear-gradient(135deg, var(--madui-accent), var(--madui-accent-light));
+  color: var(--madui-primary-dark);
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  letter-spacing: 0.025em;
+  box-shadow: 0 0 12px rgba(230, 179, 37, 0.3);
+}
+
+/* Verified badge */
+.verified-badge {
+  background: var(--madui-primary-lighter);
+  color: var(--madui-primary);
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Card hover effect */
+.card-hover {
+  transition: transform var(--madui-transition), box-shadow var(--madui-transition);
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--madui-shadow-lg);
+}
+
+/* Bento grid item */
+.bento-card {
+  background: var(--madui-bg-card);
+  border: 1px solid var(--madui-border);
+  border-radius: var(--madui-radius-lg);
+  overflow: hidden;
+  transition: all var(--madui-transition);
+}
+.bento-card:hover {
+  border-color: var(--madui-primary-light);
+  box-shadow: var(--madui-shadow-md);
+}
+
+/* Skeleton loading animation */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--madui-radius);
+}
+
+/* Stepper progress bar */
+.stepper-line {
+  height: 3px;
+  background: var(--madui-border);
+  border-radius: 9999px;
+  transition: background var(--madui-transition-slow);
+}
+.stepper-line.active {
+  background: var(--madui-primary);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, var(--madui-primary), var(--madui-primary-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Focus ring */
+.focus-ring {
+  outline: none;
+}
+.focus-ring:focus-visible {
+  outline: 2px solid var(--madui-primary);
+  outline-offset: 2px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--madui-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--madui-text-muted);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--madui-text-secondary);
+}
+
+/* Mobile touch target minimum */
+@media (pointer: coarse) {
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}

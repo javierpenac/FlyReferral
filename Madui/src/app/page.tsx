@@ -1,6 +1,22 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Logo } from "@/components/ui/Logo";
 import { createClient } from "@/lib/supabase/server";
+
+const categoryImages: Record<string, string> = {
+  "comida-bebidas": "/categories/comida-bebidas.png",
+  "belleza-bienestar": "/categories/belleza-bienestar.png",
+  "salud": "/categories/salud.png",
+  "educacion": "/categories/educacion.png",
+  "tecnologia": "/categories/tecnologia.png",
+  "hogar-jardin": "/categories/hogar-jardin.png",
+  "moda-accesorios": "/categories/moda-accesorios.png",
+  "deportes-fitness": "/categories/deportes-fitness.png",
+  "mascotas": "/categories/mascotas.png",
+  "arte-cultura": "/categories/arte-cultura.png",
+  "servicios-profesionales": "/categories/servicios-profesionales.png",
+  "otro": "/categories/otro.png",
+};
 
 export default async function Home() {
   const supabase = await createClient();
@@ -15,7 +31,7 @@ export default async function Home() {
   // Fetch approved entrepreneurs (premium first)
   const { data: entrepreneurs } = await supabase
     .from("profiles")
-    .select("*, categories(name, emoji)")
+    .select("*, categories(name, emoji, slug)")
     .eq("verification_status", "aprobado")
     .order("plan_type", { ascending: false })
     .limit(8);
@@ -118,13 +134,20 @@ export default async function Home() {
       <section className="max-w-7xl mx-auto px-4 -mt-8 relative z-10">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
           {(categories || []).slice(0, 12).map((cat) => (
-            <Link key={cat.id} href={`/directorio?categoria=${cat.slug}`} className="bg-white rounded-xl p-4 text-center border border-[var(--madui-border)] hover:border-[var(--madui-primary)] hover:shadow-md transition-all group">
-              <span className="text-3xl block mb-2 group-hover:scale-110 transition-transform">
-                {cat.emoji}
-              </span>
-              <span className="text-sm font-medium text-[var(--madui-text)] group-hover:text-[var(--madui-primary)] transition-colors">
-                {cat.name}
-              </span>
+            <Link key={cat.id} href={`/directorio?categoria=${cat.slug}`} className="relative rounded-xl overflow-hidden border border-[var(--madui-border)] hover:border-[var(--madui-primary)] hover:shadow-lg transition-all group aspect-square">
+              <Image
+                src={categoryImages[cat.slug] || "/categories/otro.png"}
+                alt={cat.name}
+                fill
+                className="object-cover group-hover:scale-110 transition-transform duration-500"
+                sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 16vw"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 p-3 text-center">
+                <span className="text-white font-semibold text-sm drop-shadow-lg">
+                  {cat.name}
+                </span>
+              </div>
             </Link>
           ))}
         </div>
@@ -150,14 +173,18 @@ export default async function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {entrepreneurs.map((profile) => (
               <Link key={profile.id} href={`/directorio/${profile.id}`} className="bento-card group">
-                <div className="aspect-[4/3] bg-gradient-to-br from-[var(--madui-primary-lighter)] to-gray-100 flex items-center justify-center relative">
+                <div className="aspect-[4/3] bg-gradient-to-br from-[var(--madui-primary-lighter)] to-gray-100 flex items-center justify-center relative overflow-hidden">
                   {profile.profile_photo_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={profile.profile_photo_url} alt={profile.business_name || ""} className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-5xl">
-                      {(profile.categories as { emoji?: string } | null)?.emoji || "🏪"}
-                    </span>
+                    <Image
+                      src={categoryImages[(profile.categories as { slug?: string } | null)?.slug || 'otro'] || '/categories/otro.png'}
+                      alt={(profile.categories as { name?: string } | null)?.name || 'Negocio'}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                    />
                   )}
                   {profile.plan_type === "premium" && (
                     <span className="absolute top-3 right-3 premium-badge">⭐ Premium</span>
